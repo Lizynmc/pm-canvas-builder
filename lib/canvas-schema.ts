@@ -44,6 +44,11 @@ export type CanvasBlock = {
   subtitle?: string; // só usado quando a definição do bloco não tem fixedSubtitle
   groups: CanvasGroup[];
   detail?: DetailSection[]; // opcional — só aparece na seção ampliada (zoom)
+  // Texto corrido, do tamanho que a pessoa quiser (a lista de requisitos
+  // inteira, colada de outro documento). Só o bloco marcado com
+  // `hasFullText` na definição usa isso, e ele aparece exclusivamente numa
+  // aba própria da seção ampliada — nunca no card do canvas.
+  fullText?: string;
 };
 
 export type CanvasModel = {
@@ -60,6 +65,10 @@ export type BlockDefinition = {
   gridColumn: string;
   gridRow: string;
   icon: string; // markup interno do <svg>, sem o wrapper
+  // Ganha a aba de texto corrido na seção ampliada (ver CanvasBlock.fullText).
+  // Só "Requisitos" tem: é o bloco em que a lista completa costuma existir
+  // num documento à parte e não caber em item de canvas.
+  fullTextTab?: string;
 };
 
 export const BLOCK_DEFINITIONS: BlockDefinition[] = [
@@ -96,13 +105,14 @@ export const BLOCK_DEFINITIONS: BlockDefinition[] = [
   {
     id: "requisitos",
     title: "Requisitos",
+    fullTextTab: "Requisitos completos",
     gridColumn: "2",
     gridRow: "3 / 7",
     icon: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>',
   },
   {
     id: "stakeholders",
-    title: "Stakeholders externos",
+    title: "Stakeholders",
     fixedSubtitle: "& fatores externos",
     gridColumn: "3",
     gridRow: "1 / 4",

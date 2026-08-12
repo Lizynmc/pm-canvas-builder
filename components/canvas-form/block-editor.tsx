@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { ItemsEditor } from "@/components/items-editor";
 import { SimpleItemsEditor } from "@/components/simple-items-editor";
 import { ListEditor } from "@/components/list-editor";
@@ -98,6 +99,24 @@ export function BlockEditor({
               sections={block.detail ?? []}
               onChange={(detail) => onChange({ ...block, detail })}
             />
+          )}
+
+          {def.fullTextTab && (
+            <div className="space-y-1.5">
+              <Label htmlFor={`fulltext-${def.id}`}>
+                {def.fullTextTab} — aparece só ao ampliar a seção, numa aba
+                própria (nunca no canvas)
+              </Label>
+              <Textarea
+                id={`fulltext-${def.id}`}
+                rows={8}
+                placeholder="Cole aqui o texto completo — pode ser do tamanho que precisar."
+                value={block.fullText ?? ""}
+                onChange={(e) =>
+                  onChange({ ...block, fullText: e.target.value })
+                }
+              />
+            </div>
           )}
         </>
       )}

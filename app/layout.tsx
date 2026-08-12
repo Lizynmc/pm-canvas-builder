@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import Link from "next/link";
 import { Link2 } from "lucide-react";
+import { AppSidebar } from "@/components/app-sidebar";
+import {
+  AUTHOR_GITHUB_URL,
+  LICENSE_NAME,
+  LICENSE_URL,
+} from "@/lib/project-links";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -13,7 +19,6 @@ const poppins = Poppins({
 
 // TODO: colocar a URL do LinkedIn quando disponível.
 const LINKEDIN_URL = "";
-const GITHUB_URL = "https://github.com/Lizynmc";
 
 export const metadata: Metadata = {
   title: "PM Canvas Builder",
@@ -25,12 +30,25 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="pt-BR" className={`${poppins.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">
-        <div className="flex-1 flex flex-col">{children}</div>
+        <div className="flex-1 flex">
+          <AppSidebar />
+          <div className="flex-1 min-w-0 flex flex-col">{children}</div>
+        </div>
         <footer className="border-t px-6 py-4 flex items-center justify-between text-sm text-muted-foreground">
-          <span>PM Canvas Builder</span>
+          <span>
+            PM Canvas Builder ·{" "}
+            <Link
+              href={LICENSE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground transition-colors underline underline-offset-2"
+            >
+              Licença {LICENSE_NAME}
+            </Link>
+          </span>
           <div className="flex items-center gap-4">
             <Link
-              href={GITHUB_URL}
+              href={AUTHOR_GITHUB_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors"

@@ -5,14 +5,15 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Download, ExternalLink, RotateCcw } from "lucide-react";
 import { emptyCanvasModel } from "@/lib/canvas-schema";
 import { DEFAULT_PALETTE_ID } from "@/lib/palettes";
 import { renderCanvasHtml } from "@/lib/render-canvas-html";
 import { useDraft } from "@/lib/use-draft";
+import { useAdvancedMode } from "@/lib/use-advanced-mode";
 import { applyCanvasEdit } from "@/lib/apply-canvas-edit";
 import { PalettePicker } from "@/components/palette-picker";
-import { PrivacyBanner } from "@/components/privacy-banner";
 import { EditableCanvas } from "@/components/editable-canvas";
 
 function slugify(value: string): string {
@@ -28,6 +29,7 @@ export default function Home() {
   const { model, setModel, clearDraft, restored } = useDraft(
     emptyCanvasModel(DEFAULT_PALETTE_ID),
   );
+  const { advanced, toggleAdvanced } = useAdvancedMode();
 
   useEffect(() => {
     if (restored) toast.info("Rascunho restaurado do seu navegador.");
@@ -70,8 +72,6 @@ export default function Home() {
         </p>
       </div>
 
-      <PrivacyBanner />
-
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="projectName">Nome do projeto</Label>
@@ -81,7 +81,7 @@ export default function Home() {
             onChange={(e) =>
               setModel({ ...model, projectName: e.target.value })
             }
-            placeholder="Ex: PetConecta"
+            placeholder="Como o projeto se chama"
           />
         </div>
         <div className="space-y-1.5">
@@ -93,7 +93,25 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex items-start gap-3 rounded-md border p-4">
+        <Switch
+          id="modoCompleto"
+          checked={advanced}
+          onCheckedChange={toggleAdvanced}
+        />
+        <div className="space-y-1">
+          <Label htmlFor="modoCompleto" className="cursor-pointer">
+            Modo completo
+          </Label>
+          <p className="text-muted-foreground text-sm">
+            {advanced
+              ? "Sublistas com título (+ sublista) já dá pra criar aqui no canvas. O detalhamento longo fica no modo de visualização: clique no título de um bloco pra ampliá-lo e escrever lá — esse texto aparece só na ampliação, nunca no canvas."
+              : "Só a lista principal de cada bloco é editável. Ligue pra preencher também as sublistas com título e o detalhamento de cada bloco."}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
         <Button onClick={handleDownload}>
           <Download className="size-4" /> Baixar HTML
         </Button>
@@ -107,6 +125,7 @@ export default function Home() {
 
       <EditableCanvas
         model={model}
+        advanced={advanced}
         onEdit={(message) =>
           setModel((prev) => applyCanvasEdit(prev, message))
         }

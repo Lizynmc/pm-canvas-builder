@@ -18,6 +18,23 @@ export type Palette = {
 };
 
 export const PALETTES: Palette[] = [
+  // A que abre por padrão. Monocromática: bloco branco, página cinza, texto e
+  // ícones pretos — sem cor de destaque nenhuma, o "pendente" é um chip cinza
+  // em vez de colorido.
+  {
+    id: "preto",
+    name: "Preto",
+    ink: "#0A0A0A",
+    accent: "#1F1F1F",
+    accentDark: "#000000",
+    accentBg: "#EBEBEC",
+    paper: "#FFFFFF",
+    muted: "#6B6B70",
+    line: "#E2E2E4",
+    pageBg: "#F2F2F3",
+    footerText: "#C9C9CD",
+    backdrop: "#0A0A0A",
+  },
   {
     id: "rosa",
     name: "Rosa",
@@ -74,19 +91,52 @@ export const PALETTES: Palette[] = [
     footerText: "#BFE6CC",
     backdrop: "#0B140F",
   },
+  // As três abaixo saíram das cores que você mandou (#A5D6A4, #BC9FD0,
+  // #B7F1E5, #4E6E73). Como o canvas precisa de dez papéis de cor e não de
+  // quatro, cada cor entrou no papel em que ela funciona: as duas de meio-tom
+  // viram o accent das duas primeiras, e a menta clara + o petróleo escuro
+  // formam a terceira (menta no fundo/rodapé, petróleo no traço).
   {
-    id: "ambar",
-    name: "Âmbar",
-    ink: "#241A10",
-    accent: "#E08A22",
-    accentDark: "#93500A",
-    accentBg: "#FCEEDC",
+    id: "salvia",
+    name: "Sálvia",
+    ink: "#22322D",
+    accent: "#A5D6A4",
+    accentDark: "#4A7C59",
+    accentBg: "#E9F5E8",
     paper: "#FFFFFF",
-    muted: "#6B5E4F",
-    line: "#EEE0CE",
-    pageBg: "#FAF3E9",
-    footerText: "#F3D9AE",
-    backdrop: "#140F0A",
+    muted: "#5F726B",
+    line: "#DCE7DC",
+    pageBg: "#EFF5EE",
+    footerText: "#C6E4C4",
+    backdrop: "#0E1613",
+  },
+  {
+    id: "lilas",
+    name: "Lilás",
+    ink: "#241C2E",
+    accent: "#BC9FD0",
+    accentDark: "#6E4F8A",
+    accentBg: "#F1EAF7",
+    paper: "#FFFFFF",
+    muted: "#6A5F78",
+    line: "#E5DCEC",
+    pageBg: "#F2EDF7",
+    footerText: "#DBC7E9",
+    backdrop: "#100B16",
+  },
+  {
+    id: "menta",
+    name: "Menta",
+    ink: "#1B2B2D",
+    accent: "#4E6E73",
+    accentDark: "#38585C",
+    accentBg: "#B7F1E5",
+    paper: "#FFFFFF",
+    muted: "#5E7377",
+    line: "#DBE8E7",
+    pageBg: "#EDF6F4",
+    footerText: "#B7F1E5",
+    backdrop: "#0A1416",
   },
   {
     id: "grafite",
@@ -104,7 +154,7 @@ export const PALETTES: Palette[] = [
   },
 ];
 
-export const DEFAULT_PALETTE_ID = "rosa";
+export const DEFAULT_PALETTE_ID = "preto";
 
 export function getPalette(id: string): Palette {
   return PALETTES.find((p) => p.id === id) ?? PALETTES[0];

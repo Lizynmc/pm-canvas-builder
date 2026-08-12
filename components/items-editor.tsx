@@ -18,6 +18,9 @@ export function ItemsEditor({
     <div className="space-y-2">
       {items.map((item, i) => (
         <div key={i} className="flex items-center gap-2">
+          <span className="tabular-nums text-xs text-muted-foreground w-5 shrink-0 text-right">
+            {i + 1}.
+          </span>
           <Input
             placeholder="Item"
             value={item.text}

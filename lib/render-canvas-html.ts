@@ -1,7 +1,20 @@
-import { BLOCK_DEFINITIONS, type CanvasBlock, type CanvasModel } from "./canvas-schema";
+import {
+  BLOCK_DEFINITIONS,
+  type CanvasBlock,
+  type CanvasGroup,
+  type CanvasItem,
+  type CanvasModel,
+} from "./canvas-schema";
 import { GSAP_SOURCE } from "./gsap-inline";
 import { escapeHtml } from "./html-escape";
 import { getPalette } from "./palettes";
+import {
+  AUTHOR_GITHUB_HANDLE,
+  AUTHOR_GITHUB_URL,
+  GENERATOR_URL,
+  LICENSE_NAME,
+  LICENSE_URL,
+} from "./project-links";
 
 function renderGroups(block: CanvasBlock): string {
   return block.groups
@@ -49,35 +62,137 @@ function renderDetail(block: CanvasBlock): string {
     .join("\n");
 }
 
-// Modo editável: os itens do grupo principal (groups[0]) viram <li>
-// editáveis diretamente no canvas, incluindo os vazios (pra sempre sobrar um
-// slot pra digitar), com botões de remover/marcar pendente/adicionar. Cada
-// controle carrega os índices em data-* pra o script injetado saber o que
-// avisar ao React via postMessage. Subgrupos e detalhamento continuam só de
-// leitura nesta versão — editáveis apenas pelo formulário (fora desta
-// experiência de edição direta no canvas).
-function renderEditableMainGroup(blockId: string, block: CanvasBlock): string {
-  const items = block.groups[0]?.items ?? [{ text: "" }];
-  const lis = items
-    .map((item, i) => {
-      const pendingClass = item.pending ? " open" : "";
-      const attrs = `data-block="${blockId}" data-group="0" data-item="${i}"`;
-      return `<li class="li-edit${pendingClass}">
+// Modo editável: os itens viram <li> editáveis diretamente no canvas,
+// incluindo os vazios (pra sempre sobrar um slot pra digitar), com botões de
+// remover/marcar pendente/adicionar. Cada controle carrega os índices em
+// data-* pra o script injetado saber o que avisar ao React via postMessage.
+function renderEditableItem(
+  blockId: string,
+  groupIndex: number,
+  item: CanvasItem,
+  i: number,
+): string {
+  const pendingClass = item.pending ? " open" : "";
+  const attrs = `data-block="${blockId}" data-group="${groupIndex}" data-item="${i}"`;
+  return `<li class="li-edit${pendingClass}">
         <span class="item-text" contenteditable="true" data-role="item-text" data-placeholder="Adicionar item…" ${attrs}>${escapeHtml(item.text)}</span>
         <span class="item-controls">
-          <button type="button" data-action="toggle-pending" ${attrs} title="Marcar/desmarcar como pendente">●</button>
+          <button type="button" data-action="toggle-pending" ${attrs} title="${item.pending ? "Em aberto — clique pra marcar como decidido" : "Marcar como em aberto (pendente de decisão)"}" aria-pressed="${item.pending ? "true" : "false"}"><span class="visually-hidden">Em aberto</span></button>
           <button type="button" data-action="remove-item" ${attrs} title="Remover item">✕</button>
         </span>
       </li>`;
-    })
+}
+
+// Uma lista editável. `groups[0]` é a lista principal do bloco (sem título);
+// de `groups[1]` em diante são as sublistas, que ganham um título editável e
+// um botão pra remover a sublista inteira.
+function renderEditableGroup(
+  blockId: string,
+  group: CanvasGroup,
+  groupIndex: number,
+): string {
+  const items = group.items.length > 0 ? group.items : [{ text: "" }];
+  const label =
+    groupIndex === 0
+      ? ""
+      : `<div class="sub-edit">
+        <span class="sub" contenteditable="true" data-role="group-label" data-placeholder="Título da sublista…" data-block="${blockId}" data-group="${groupIndex}">${escapeHtml(group.label ?? "")}</span>
+        <button type="button" class="sub-remove" data-action="remove-group" data-block="${blockId}" data-group="${groupIndex}" title="Remover sublista">✕</button>
+      </div>`;
+  const lis = items
+    .map((item, i) => renderEditableItem(blockId, groupIndex, item, i))
     .join("");
-  return `<ul>${lis}</ul><button type="button" class="add-item-btn" data-action="add-item" data-block="${blockId}" data-group="0">+ item</button>`;
+  return `${label}<ul>${lis}</ul><button type="button" class="add-item-btn" data-action="add-item" data-block="${blockId}" data-group="${groupIndex}">+ item</button>`;
+}
+
+// Modo simples (advanced=false): só a lista principal é editável; as sublistas
+// que já existirem no rascunho continuam aparecendo, só leitura — exatamente o
+// comportamento anterior. Modo completo (advanced=true): todas as listas são
+// editáveis e dá pra criar sublistas novas.
+function renderEditableGroups(
+  blockId: string,
+  block: CanvasBlock,
+  advanced: boolean,
+): string {
+  const groups =
+    block.groups.length > 0 ? block.groups : [{ items: [{ text: "" }] }];
+  if (!advanced) {
+    const readOnlyRest = renderGroups({ ...block, groups: groups.slice(1) });
+    return `${renderEditableGroup(blockId, groups[0], 0)}\n${readOnlyRest}`;
+  }
+  const all = groups
+    .map((group, i) => renderEditableGroup(blockId, group, i))
+    .join("\n");
+  return `${all}
+      <button type="button" class="add-group-btn" data-action="add-group" data-block="${blockId}">+ sublista</button>`;
+}
+
+// Detalhamento editável (só no modo completo). Ele vive inteiro dentro da
+// seção ampliada — no card do grid `.block-detail` fica escondido, e é assim
+// que tem que ser: o canvas continua enxuto e o texto longo mora no "modo de
+// visualização". A legenda no topo avisa isso, porque senão a pessoa escreve
+// ali e estranha não ver nada no canvas.
+function renderEditableDetail(blockId: string, block: CanvasBlock): string {
+  const sections = block.detail ?? [];
+  const sectionsHtml = sections
+    .map((section, s) => {
+      const entries =
+        section.entries.length > 0 ? section.entries : [{ text: "" }];
+      const lis = entries
+        .map((entry, e) => {
+          const attrs = `data-block="${blockId}" data-section="${s}" data-entry="${e}"`;
+          return `<li class="detail-edit">
+            <span class="detail-fields">
+              <strong contenteditable="true" data-role="detail-entry-label" ${attrs}>${escapeHtml(entry.label ?? "")}</strong>
+              <span contenteditable="true" data-role="detail-entry-text" data-placeholder="Texto da entrada…" ${attrs}>${escapeHtml(entry.text)}</span>
+              <em class="detail-note" contenteditable="true" data-role="detail-entry-note" data-placeholder="Observação (opcional)" ${attrs}>${escapeHtml(entry.note ?? "")}</em>
+            </span>
+            <button type="button" class="detail-remove" data-action="remove-detail-entry" ${attrs} title="Remover entrada">✕</button>
+          </li>`;
+        })
+        .join("");
+      const sectionAttrs = `data-block="${blockId}" data-section="${s}"`;
+      return `<div class="detail-section-edit">
+          <div class="detail-head">
+            <h3 contenteditable="true" data-role="detail-heading" data-placeholder="Título do detalhamento…" ${sectionAttrs}>${escapeHtml(section.heading)}</h3>
+            <button type="button" class="detail-remove" data-action="remove-detail-section" ${sectionAttrs} title="Remover seção do detalhamento">✕</button>
+          </div>
+          <p class="detail-note" contenteditable="true" data-role="detail-intro" data-placeholder="Introdução (opcional)…" ${sectionAttrs}>${escapeHtml(section.intro ?? "")}</p>
+          <ul class="detail-list">${lis}</ul>
+          <button type="button" class="add-item-btn" data-action="add-detail-entry" ${sectionAttrs}>+ entrada</button>
+        </div>`;
+    })
+    .join("\n");
+  return `<div class="detail-legend">
+          <span class="detail-legend-title">Detalhamento</span>
+          <span class="detail-legend-tag">aparece só aqui, na seção ampliada — não no canvas</span>
+        </div>
+        ${sectionsHtml}
+        <button type="button" class="add-group-btn" data-action="add-detail-section" data-block="${blockId}">+ seção de detalhamento</button>`;
+}
+
+// Aba de texto corrido (hoje só em Requisitos). Fica escondida no card do
+// grid e só é alcançável pela seção ampliada, onde o script monta as abas —
+// é o lugar de colar a lista inteira, do tamanho que for, sem inchar o canvas.
+function renderFullText(
+  def: (typeof BLOCK_DEFINITIONS)[number],
+  block: CanvasBlock,
+  editable: boolean,
+): string {
+  if (!def.fullTextTab) return "";
+  const text = block.fullText ?? "";
+  if (!editable && !text.trim()) return "";
+  const body = editable
+    ? `<div class="full-text-body" contenteditable="true" data-role="full-text" data-placeholder="Cole aqui o texto completo — pode ser do tamanho que precisar." data-block="${def.id}">${escapeHtml(text)}</div>`
+    : `<div class="full-text-body">${escapeHtml(text)}</div>`;
+  return `<div class="block-full-text" data-tab-label="${escapeHtml(def.fullTextTab)}">${body}</div>`;
 }
 
 function renderBlockSection(
   def: (typeof BLOCK_DEFINITIONS)[number],
   block: CanvasBlock,
   editable: boolean,
+  advanced: boolean,
 ): string {
   const fixedSubtitle = def.fixedSubtitle;
   const subtitle = fixedSubtitle ?? (block.subtitle?.trim() || "");
@@ -88,24 +203,34 @@ function renderBlockSection(
       : subtitle
         ? ` <small>${escapeHtml(subtitle)}</small>`
         : "";
-  // Subgrupos (groups[1:]) continuam só leitura mesmo em modo editável.
-  const readOnlyGroupsHtml = renderGroups({ ...block, groups: block.groups.slice(1) });
-  const mainGroupHtml = editable
-    ? renderEditableMainGroup(def.id, block)
-    : renderGroups({ ...block, groups: block.groups.slice(0, 1) });
-  const detailHtml = renderDetail(block);
+  const groupsHtml = editable
+    ? renderEditableGroups(def.id, block, advanced)
+    : renderGroups(block);
+
+  // No modo completo o detalhamento é sempre renderizado (mesmo vazio), senão
+  // não haveria onde clicar pra criar a primeira seção.
+  const detailHtml = editable && advanced
+    ? renderEditableDetail(def.id, block)
+    : renderDetail(block);
   const hasDetail = detailHtml.trim().length > 0;
 
+  const fullTextHtml = renderFullText(def, block, editable);
+  // Atalho pra aba de texto corrido: sem ele, não haveria como descobrir que
+  // ela existe. Fica só no bloco que tem a aba, e só no modo editável.
+  const fullTextBtn =
+    editable && def.fullTextTab
+      ? `\n        <button type="button" class="full-text-btn" data-action="open-full-text" data-block="${def.id}">+ texto completo</button>`
+      : "";
+
   return `
-    <section class="block b-${def.id}">
+    <section class="block b-${def.id}"${editable ? ` data-block-id="${def.id}"` : ""}>
       <header>
         <svg class="ico" viewBox="0 0 24 24">${def.icon}</svg>
         <h2>${escapeHtml(def.title)}${small}</h2>
       </header>
       <div class="block-summary">
-        ${mainGroupHtml}
-        ${readOnlyGroupsHtml}
-      </div>${hasDetail ? `\n      <div class="block-detail">${detailHtml}</div>` : ""}
+        ${groupsHtml}${fullTextBtn}
+      </div>${hasDetail ? `\n      <div class="block-detail">${detailHtml}</div>` : ""}${fullTextHtml ? `\n      ${fullTextHtml}` : ""}
     </section>`;
 }
 
@@ -116,9 +241,14 @@ function gridPositionCss(): string {
   ).join("\n  ");
 }
 
+// Ícone `layout-dashboard` do lucide (os mesmos quatro retângulos do grid do
+// canvas), preenchido com o accent da paleta.
+const FAVICON_SHAPE =
+  "%3Crect%20x='3'%20y='3'%20width='7'%20height='9'%20rx='1.5'/%3E%3Crect%20x='14'%20y='3'%20width='7'%20height='5'%20rx='1.5'/%3E%3Crect%20x='14'%20y='12'%20width='7'%20height='9'%20rx='1.5'/%3E%3Crect%20x='3'%20y='16'%20width='7'%20height='5'%20rx='1.5'/%3E";
+
 function faviconHref(accent: string): string {
   const fill = encodeURIComponent(accent);
-  return `data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='${fill}'%3E%3Cellipse%20cx='12'%20cy='16.6'%20rx='5.7'%20ry='4.7'/%3E%3Cellipse%20cx='4.9'%20cy='9.6'%20rx='2.7'%20ry='3.2'/%3E%3Cellipse%20cx='9.8'%20cy='5.4'%20rx='2.6'%20ry='3.4'/%3E%3Cellipse%20cx='15.3'%20cy='5.6'%20rx='2.6'%20ry='3.4'/%3E%3Cellipse%20cx='19.6'%20cy='10'%20rx='2.7'%20ry='3.2'/%3E%3C/svg%3E`;
+  return `data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='${fill}'%3E${FAVICON_SHAPE}%3C/svg%3E`;
 }
 
 const INTERACTION_SCRIPT = `
@@ -221,7 +351,20 @@ const INTERACTION_SCRIPT = `
 
   window.addEventListener("resize", fitSlide);
 
-  function openZoom(block) {
+  // Só no modo editável (window.__pmcEditable): avisa o app React qual bloco
+  // está ampliado, pra ele reabrir o mesmo zoom depois de recarregar o iframe
+  // — senão editar o detalhamento fecharia a ampliação a cada ação.
+  function postZoom(type, block) {
+    if (!window.__pmcEditable) return;
+    window.parent.postMessage({
+      source: "pmc-canvas",
+      type: type,
+      blockId: block ? block.dataset.blockId : null
+    }, "*");
+  }
+
+  function openZoom(block, instantaneo) {
+    if (document.querySelector(".zoom-overlay")) return;
     var ov = document.createElement("div");
     ov.className = "zoom-overlay";
     ov.setAttribute("role", "dialog");
@@ -232,6 +375,42 @@ const INTERACTION_SCRIPT = `
     if (card.querySelector(".block-detail")) {
       card.classList.add("zoom-card--wide");
     }
+
+    // Bloco com texto corrido (hoje só Requisitos) ganha abas: o conteúdo do
+    // canvas de um lado, o texto inteiro do outro. O card é um clone, então as
+    // abas são montadas aqui, depois de clonar.
+    var full = card.querySelector(".block-full-text");
+    if (full) {
+      var tabs = document.createElement("div");
+      tabs.className = "zoom-tabs";
+      var titulo = card.querySelector("h2");
+      var nomes = [
+        titulo ? titulo.childNodes[0].textContent.trim() : "Bloco",
+        full.dataset.tabLabel || "Texto completo"
+      ];
+      for (var t = 0; t < nomes.length; t++) {
+        (function (indice) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "zoom-tab";
+          b.textContent = nomes[indice];
+          b.setAttribute("aria-selected", indice === 0 ? "true" : "false");
+          b.addEventListener("click", function () {
+            card.classList.toggle("show-full-text", indice === 1);
+            var todos = tabs.querySelectorAll(".zoom-tab");
+            for (var k = 0; k < todos.length; k++) {
+              todos[k].setAttribute("aria-selected", k === indice ? "true" : "false");
+            }
+          });
+          tabs.appendChild(b);
+        })(t);
+      }
+      card.insertBefore(tabs, card.querySelector("header").nextSibling);
+      if (window.__pmcAutoTab === "full-text") {
+        tabs.querySelectorAll(".zoom-tab")[1].click();
+      }
+    }
+    window.__pmcAutoTab = null;
 
     var x = document.createElement("button");
     x.className = "zoom-x";
@@ -254,7 +433,9 @@ const INTERACTION_SCRIPT = `
       };
     }
 
-    if (semMovimento.matches) {
+    postZoom("zoom-open", block);
+
+    if (semMovimento.matches || instantaneo) {
       gsap.set(ov, { opacity: 1 });
     } else {
       gsap.to(ov, { opacity: 1, duration: 0.28, ease: "power2.out" });
@@ -263,6 +444,7 @@ const INTERACTION_SCRIPT = `
 
     function close() {
       document.removeEventListener("keydown", onKey);
+      postZoom("zoom-close", null);
       if (semMovimento.matches) { ov.remove(); return; }
       gsap.to(ov, { opacity: 0, duration: 0.3, ease: "power2.in" });
       gsap.to(card, Object.assign(origem(), {
@@ -293,6 +475,15 @@ const INTERACTION_SCRIPT = `
       });
     })(headers[i]);
   }
+
+  // Exposto pro EDITABLE_SCRIPT (botão "Detalhamento") e usado logo abaixo
+  // pra reabrir a ampliação que estava aberta antes do reload do iframe.
+  window.__pmcOpenZoom = openZoom;
+
+  if (window.__pmcAutoZoom) {
+    var autoBlock = document.querySelector('[data-block-id="' + window.__pmcAutoZoom + '"]');
+    if (autoBlock) openZoom(autoBlock, true);
+  }
 })();
 `;
 
@@ -308,9 +499,26 @@ const EDITABLE_SCRIPT = `
     window.parent.postMessage(Object.assign({ source: "pmc-canvas" }, msg), "*");
   }
 
+  // A seção ampliada é um CLONE do bloco. Quem edita lá dentro mexe no clone,
+  // não no card do grid — então o texto é copiado de volta pro campo original
+  // (mesmos data-*). Sem isso, o app precisaria recarregar o iframe a cada
+  // palavra digitada só pra ressincronizar, que é de onde vinham os flashes.
+  function espelharNoCanvas(el) {
+    if (!el.closest(".zoom-card")) return;
+    var seletor = '[data-role="' + el.dataset.role + '"]';
+    ["block", "group", "item", "section", "entry"].forEach(function (chave) {
+      if (el.dataset[chave] !== undefined) {
+        seletor += "[data-" + chave + '="' + el.dataset[chave] + '"]';
+      }
+    });
+    var original = document.querySelector(".grid " + seletor);
+    if (original && original !== el) original.textContent = el.textContent;
+  }
+
   document.addEventListener("focusout", function (e) {
     var el = e.target;
     if (!el.matches) return;
+    if (el.dataset && el.dataset.role) espelharNoCanvas(el);
     if (el.matches('[data-role="item-text"]')) {
       post({
         type: "item-text",
@@ -323,6 +531,44 @@ const EDITABLE_SCRIPT = `
       post({ type: "subtitle-text", blockId: el.dataset.block, text: el.textContent });
     } else if (el.matches('[data-role="footer-meta"]')) {
       post({ type: "footer-meta-text", text: el.textContent });
+    } else if (el.matches('[data-role="full-text"]')) {
+      // innerText, não textContent: aqui as quebras de linha são o conteúdo —
+      // textContent juntaria os parágrafos colados num bloco só.
+      post({ type: "full-text", blockId: el.dataset.block, text: el.innerText });
+    } else if (el.matches('[data-role="group-label"]')) {
+      post({
+        type: "group-label-text",
+        blockId: el.dataset.block,
+        groupIndex: Number(el.dataset.group),
+        text: el.textContent
+      });
+    } else if (el.matches('[data-role="detail-heading"]')) {
+      post({
+        type: "detail-heading-text",
+        blockId: el.dataset.block,
+        sectionIndex: Number(el.dataset.section),
+        text: el.textContent
+      });
+    } else if (el.matches('[data-role="detail-intro"]')) {
+      post({
+        type: "detail-intro-text",
+        blockId: el.dataset.block,
+        sectionIndex: Number(el.dataset.section),
+        text: el.textContent
+      });
+    } else if (
+      el.matches('[data-role="detail-entry-label"]') ||
+      el.matches('[data-role="detail-entry-text"]') ||
+      el.matches('[data-role="detail-entry-note"]')
+    ) {
+      post({
+        type: "detail-entry-text",
+        blockId: el.dataset.block,
+        sectionIndex: Number(el.dataset.section),
+        entryIndex: Number(el.dataset.entry),
+        field: el.dataset.role.replace("detail-entry-", ""),
+        text: el.textContent
+      });
     }
   });
 
@@ -334,12 +580,42 @@ const EDITABLE_SCRIPT = `
     var blockId = btn.dataset.block;
     var groupIndex = Number(btn.dataset.group);
     var itemIndex = btn.dataset.item !== undefined ? Number(btn.dataset.item) : undefined;
+    var sectionIndex = btn.dataset.section !== undefined ? Number(btn.dataset.section) : undefined;
+    var entryIndex = btn.dataset.entry !== undefined ? Number(btn.dataset.entry) : undefined;
+
+    // Não mexe no modelo: só amplia o bloco já na aba de texto corrido.
+    if (action === "open-full-text") {
+      var alvo = document.querySelector('[data-block-id="' + blockId + '"]');
+      if (alvo && window.__pmcOpenZoom) {
+        window.__pmcAutoTab = "full-text";
+        window.__pmcOpenZoom(alvo);
+      }
+      return;
+    }
+
     if (action === "remove-item") {
       post({ type: "item-remove", blockId: blockId, groupIndex: groupIndex, itemIndex: itemIndex });
     } else if (action === "add-item") {
       post({ type: "item-add", blockId: blockId, groupIndex: groupIndex });
     } else if (action === "toggle-pending") {
       post({ type: "item-toggle-pending", blockId: blockId, groupIndex: groupIndex, itemIndex: itemIndex });
+    } else if (action === "add-group") {
+      post({ type: "group-add", blockId: blockId });
+    } else if (action === "remove-group") {
+      post({ type: "group-remove", blockId: blockId, groupIndex: groupIndex });
+    } else if (action === "add-detail-section") {
+      post({ type: "detail-section-add", blockId: blockId });
+    } else if (action === "remove-detail-section") {
+      post({ type: "detail-section-remove", blockId: blockId, sectionIndex: sectionIndex });
+    } else if (action === "add-detail-entry") {
+      post({ type: "detail-entry-add", blockId: blockId, sectionIndex: sectionIndex });
+    } else if (action === "remove-detail-entry") {
+      post({
+        type: "detail-entry-remove",
+        blockId: blockId,
+        sectionIndex: sectionIndex,
+        entryIndex: entryIndex
+      });
     }
   });
 })();
@@ -355,26 +631,71 @@ const EDITABLE_CSS = `
     opacity: 0.7;
     cursor: text;
   }
-  .block li.li-edit {
+  /* O card ampliado é um clone com outra classe (.zoom-card, não .block), por
+     isso cada regra de item editável precisa valer nos dois. */
+  .block li.li-edit, .zoom-card li.li-edit {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 6px;
-    padding-left: 12px;
   }
-  .block li.li-edit .item-text { flex: 1; min-width: 0; }
-  .item-controls { display: flex; gap: 2px; flex-shrink: 0; }
-  .item-controls button {
+  /* Um pouco mais de respiro que o item só-leitura: aqui a bolinha do marcador
+     e o texto editável ficavam quase encostados. O :not(.open) é porque o item
+     marcado tem chip próprio (padding e bolinha em outro lugar) — mexer nele
+     desalinharia o destaque. */
+  .block li.li-edit:not(.open) { padding-left: 17px; }
+  .block li.li-edit:not(.open)::before { top: 8px; }
+  .block li.li-edit .item-text,
+  .zoom-card li.li-edit .item-text { flex: 1; min-width: 0; }
+  .item-controls { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  /* Status "em aberto": um círculo vazado que enche quando marcado. Antes era
+     um caractere "●" que ficava sempre igual — não dava pra saber, olhando,
+     se o item estava marcado ou não. */
+  .item-controls button[data-action="toggle-pending"] {
+    width: 13px;
+    height: 13px;
+    padding: 0;
+    border: 1.5px solid var(--line);
+    border-radius: 50%;
+    background: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .item-controls button[data-action="toggle-pending"]:hover {
+    border-color: var(--accent-dark);
+    background: var(--accent-bg);
+  }
+  li.li-edit.open .item-controls button[data-action="toggle-pending"] {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+  }
+  /* Discreto por opacidade, não por cor clara: em cima do chip do item
+     marcado, um "✕" na cor da linha some por completo. */
+  .item-controls button[data-action="remove-item"] {
     border: none;
     background: none;
     cursor: pointer;
-    font-size: 9px;
-    color: var(--line);
+    font-size: 10px;
+    color: var(--muted);
+    opacity: 0.45;
     line-height: 1;
     padding: 3px;
   }
-  .block li.li-edit.open .item-controls button[data-action="toggle-pending"] { color: var(--accent-dark); }
-  .item-controls button:hover { color: var(--accent-dark); }
+  .item-controls button[data-action="remove-item"]:hover {
+    color: var(--accent-dark);
+    opacity: 1;
+  }
+  .zoom-card .item-controls button[data-action="toggle-pending"] { width: 17px; height: 17px; }
+  .zoom-card .item-controls button[data-action="remove-item"] { font-size: 14px; padding: 5px; }
   .add-item-btn {
     margin-top: 6px;
     font-size: 10px;
@@ -387,13 +708,151 @@ const EDITABLE_CSS = `
     align-self: flex-start;
   }
   .add-item-btn:hover { color: var(--accent-dark); border-color: var(--accent); }
+  .full-text-btn {
+    margin-top: 10px;
+    align-self: flex-start;
+    font-size: 10px;
+    color: var(--muted);
+    background: none;
+    border: 1px dashed var(--line);
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+  }
+  .full-text-btn:hover { color: var(--accent-dark); border-color: var(--accent); }
+  /* Dentro da ampliação a aba já existe — o atalho não faz sentido. */
+  .zoom-card .full-text-btn { display: none; }
+  .zoom-card .full-text-body {
+    min-height: 220px;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
 `;
+
+// Só no modo completo (advanced): sublistas com título editável e a árvore de
+// detalhamento. Nada disso vai pro HTML exportado — como o EDITABLE_CSS, só
+// existe quando o canvas está sendo editado dentro do app.
+const ADVANCED_CSS = `
+  .sub-edit {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin: 8px 0 4px;
+  }
+  .sub-edit .sub { margin: 0; flex: 1; min-width: 0; }
+  .sub-remove, .detail-remove {
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--line);
+    line-height: 1;
+    padding: 3px;
+    font-size: 9px;
+    flex-shrink: 0;
+  }
+  .sub-remove:hover, .detail-remove:hover { color: var(--accent-dark); }
+  .add-group-btn {
+    display: block;
+    margin-top: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    background: none;
+    border: 1px dashed var(--line);
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+  }
+  .add-group-btn:hover { color: var(--accent-dark); border-color: var(--accent); }
+  .detail-legend {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .detail-legend-title {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--accent-dark);
+  }
+  .detail-legend-tag {
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--accent-bg);
+    border-radius: 999px;
+    padding: 3px 10px;
+  }
+  /* No modo completo a ampliação mostra as duas coisas: as listas do bloco em
+     cima e o detalhamento embaixo (fora daqui, o card largo troca uma pela
+     outra). */
+  .zoom-card--wide .block-summary { display: block; }
+  .zoom-card--wide .block-detail {
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+  .zoom-card--wide .block-detail h3 { margin-top: 0; }
+  .detail-section-edit + .detail-section-edit { margin-top: 26px; }
+  .detail-head { display: flex; align-items: baseline; gap: 8px; }
+  .detail-head h3 { flex: 1; min-width: 0; }
+  .detail-head .detail-remove { font-size: 13px; }
+  .zoom-card--wide .block-detail li.detail-edit {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  li.detail-edit .detail-fields { flex: 1; min-width: 0; }
+  li.detail-edit .detail-remove { font-size: 12px; }
+  .detail-fields strong:not(:empty)::after { content: " — "; }
+  .detail-fields em { display: inline; margin-left: 6px; }
+  /* O campo de prefixo (ex. "RN02") não tem placeholder escrito: uma palavra
+     ali no meio da frase confundia mais do que ajudava. Vazio, ele é só um
+     tracinho pontilhado clicável antes do texto da entrada. */
+  .detail-fields strong:empty {
+    display: inline-block;
+    min-width: 22px;
+    border-bottom: 1px dashed var(--line);
+    vertical-align: middle;
+  }
+  .detail-fields strong:empty:hover, .detail-fields strong:empty:focus {
+    border-bottom-color: var(--accent);
+  }
+  /* Os outros opcionais (observação, introdução) só anunciam o placeholder
+     quando o mouse/foco chega perto — senão cada entrada viraria dois textos
+     cinzas competindo com o conteúdo real. */
+  .detail-fields em:empty::before,
+  [data-role="detail-intro"]:empty::before { opacity: 0; }
+  .detail-fields:hover em:empty::before,
+  .detail-section-edit:hover [data-role="detail-intro"]:empty::before,
+  [contenteditable]:focus:empty::before { opacity: 0.7; }
+`;
+
+export type RenderCanvasOptions = {
+  editable?: boolean;
+  /** Modo completo: sublistas e detalhamento editáveis (exige `editable`). */
+  advanced?: boolean;
+  /** Bloco cuja ampliação deve reabrir sozinha ao carregar (exige `editable`). */
+  openZoomBlockId?: string | null;
+};
 
 export function renderCanvasHtml(
   model: CanvasModel,
-  options?: { editable?: boolean },
+  options?: RenderCanvasOptions,
 ): string {
   const editable = options?.editable ?? false;
+  const advanced = editable && (options?.advanced ?? false);
+  // Validado contra os ids conhecidos: o valor vem de uma postMessage do
+  // iframe e é interpolado dentro de um <script>.
+  const autoZoomId = BLOCK_DEFINITIONS.some(
+    (def) => def.id === options?.openZoomBlockId,
+  )
+    ? options?.openZoomBlockId
+    : null;
   const palette = getPalette(model.paletteId);
   const title = escapeHtml(model.projectName || "PM Canvas");
   const sheetLabel = escapeHtml(
@@ -405,8 +864,17 @@ export function renderCanvasHtml(
     : `<span class="meta">${footerMetaText}</span>`;
 
   const blocksHtml = BLOCK_DEFINITIONS.map((def) =>
-    renderBlockSection(def, model.blocks[def.id], editable),
+    renderBlockSection(def, model.blocks[def.id], editable, advanced),
   ).join("\n");
+
+  // Crédito que viaja junto com o arquivo exportado. Enquanto não houver
+  // endereço público do gerador, a frase não promete um link que não existe —
+  // fica só a autoria e a licença.
+  const autor = `<a href="${AUTHOR_GITHUB_URL}" target="_blank" rel="noopener noreferrer">${escapeHtml(AUTHOR_GITHUB_HANDLE)}</a>`;
+  const licenca = `<a href="${LICENSE_URL}" target="_blank" rel="noopener noreferrer">licença ${LICENSE_NAME}</a>`;
+  const creditLine = GENERATOR_URL
+    ? `Acesse o gerador de PM Canvas em <a href="${GENERATOR_URL}" target="_blank" rel="noopener noreferrer">${escapeHtml(GENERATOR_URL)}</a>, feito por ${autor} no GitHub. Sob ${licenca}.`
+    : `Gerador de PM Canvas feito por ${autor} no GitHub. Sob ${licenca}.`;
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -571,6 +1039,7 @@ export function renderCanvasHtml(
     color: var(--muted);
     margin-top: 6px;
   }
+  .credit a { color: var(--accent-dark); text-decoration: underline; }
 
   .backdrop {
     position: fixed;
@@ -651,7 +1120,9 @@ export function renderCanvasHtml(
     align-items: center;
     justify-content: center;
     padding: 24px;
-    background: color-mix(in srgb, var(--ink) 35%, transparent);
+    /* --backdrop, não --ink: em paleta escura o "ink" é claro, e o véu da
+       ampliação viraria uma névoa branca. */
+    background: color-mix(in srgb, var(--backdrop) 35%, transparent);
     -webkit-backdrop-filter: blur(7px);
     backdrop-filter: blur(7px);
     opacity: 0;
@@ -748,6 +1219,46 @@ export function renderCanvasHtml(
   .zoom-x:hover { background: var(--accent-bg); color: var(--accent-dark); border-color: var(--accent); }
 
   .block-detail { display: none; }
+
+  /* Texto corrido: escondido no card do grid e atrás de uma aba na seção
+     ampliada. O !important é pra vencer a regra do modo completo, que volta a
+     mostrar o resumo dentro do card largo. */
+  .block-full-text { display: none; }
+  .zoom-card.show-full-text .block-full-text { display: block; }
+  .zoom-card.show-full-text .block-summary,
+  .zoom-card.show-full-text .block-detail { display: none !important; }
+  .zoom-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .zoom-tab {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+  .zoom-tab:hover { color: var(--ink); }
+  .zoom-tab[aria-selected="true"] {
+    color: var(--accent-dark);
+    border-bottom-color: var(--accent-dark);
+  }
+  .full-text-body {
+    white-space: pre-wrap;
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--ink);
+  }
+
   .zoom-card.zoom-card--wide { width: min(980px, 96vw); }
   .zoom-card--wide .block-summary { display: none; }
   .zoom-card--wide .block-detail { display: block; }
@@ -791,6 +1302,7 @@ export function renderCanvasHtml(
     @page { size: A4 landscape; margin: 8mm; }
   }
   ${editable ? EDITABLE_CSS : ""}
+  ${advanced ? ADVANCED_CSS : ""}
 </style>
 </head>
 <body>
@@ -811,8 +1323,10 @@ ${blocksHtml}
   </div>
 </main>
 <p class="credit">Modelo: Project Model Canvas, de José Finocchio Júnior. Itens destacados estão pendentes de decisão. Clique no título de uma seção para ampliá-la, ou no título do canvas (rodapé) para o modo slide 16:9.</p>
+<p class="credit">${creditLine}</p>
 </div>
 
+${editable ? `<script>window.__pmcEditable = true;${autoZoomId ? `window.__pmcAutoZoom = ${JSON.stringify(autoZoomId)};` : ""}</script>` : ""}
 <script>${GSAP_SOURCE}</script>
 <script>${INTERACTION_SCRIPT}</script>
 ${editable ? `<script>${EDITABLE_SCRIPT}</script>` : ""}

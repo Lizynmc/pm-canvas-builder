@@ -43,9 +43,7 @@ export function SimpleItemsEditor({
 
   return (
     <Textarea
-      placeholder={
-        "Um item por parágrafo — deixe uma linha em branco entre eles.\n\nTutores não têm com quem deixar o pet ao viajar ou trabalhar.\n\nCombinação hoje é informal, feita por grupos de bairro, sem\navaliação nem termo de responsabilidade."
-      }
+      placeholder="Um item por parágrafo — deixe uma linha em branco entre eles."
       value={text}
       onChange={(e) => handleChange(e.target.value)}
       rows={7}
