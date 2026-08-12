@@ -4,13 +4,13 @@ import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import type { CanvasItem } from "@/lib/canvas-schema";
 
-// Modo simples: cola-se o texto inteiro e cada linha vira um item da lista.
-// Linhas em branco não têm efeito especial — são só espaçamento pra quem tá
-// digitando/colando e nunca viram item (senão sobrariam campos vazios
-// "fantasma" ao trocar pro modo avançado). O texto bruto (com as linhas em
-// branco) fica num estado local só pra não brigar com o cursor enquanto a
-// pessoa digita — sincronizado com `items` de novo só quando o componente
-// remonta (troca de modo, ou outro bloco).
+// Modo simples: cola-se o texto inteiro e cada PARÁGRAFO (bloco separado por
+// uma linha em branco) vira um item da lista. Dentro de um parágrafo, quebras
+// de linha são só formatação — as linhas são unidas com espaço, então um
+// texto longo pode ocupar várias linhas sem virar vários itens.
+// O texto bruto fica num estado local só pra não brigar com o cursor
+// enquanto a pessoa digita — sincronizado com `items` de novo só quando o
+// componente remonta (troca de modo, ou outro bloco).
 export function SimpleItemsEditor({
   items,
   onChange,
@@ -19,27 +19,36 @@ export function SimpleItemsEditor({
   onChange: (items: CanvasItem[]) => void;
 }) {
   const [text, setText] = useState(() =>
-    items.map((item) => item.text).join("\n"),
+    items.map((item) => item.text).join("\n\n"),
   );
 
   function handleChange(value: string) {
     setText(value);
-    const withPending = value.split("\n").map((line, i) => ({
-      text: line.trim(),
+    const paragraphs = value
+      .split(/\n\s*\n+/)
+      .map((block) =>
+        block
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .join(" "),
+      )
+      .filter((paragraph) => paragraph !== "");
+    const nextItems = paragraphs.map((paragraphText, i) => ({
+      text: paragraphText,
       pending: items[i]?.pending,
     }));
-    const nonBlank = withPending.filter((item) => item.text !== "");
-    onChange(nonBlank.length > 0 ? nonBlank : [{ text: "" }]);
+    onChange(nextItems.length > 0 ? nextItems : [{ text: "" }]);
   }
 
   return (
     <Textarea
       placeholder={
-        "Um item por linha, ex:\nTutores não têm com quem deixar o pet ao viajar\nCombinação hoje é informal, por grupos de bairro"
+        "Um item por parágrafo — deixe uma linha em branco entre eles.\n\nTutores não têm com quem deixar o pet ao viajar ou trabalhar.\n\nCombinação hoje é informal, feita por grupos de bairro, sem\navaliação nem termo de responsabilidade."
       }
       value={text}
       onChange={(e) => handleChange(e.target.value)}
-      rows={5}
+      rows={7}
     />
   );
 }

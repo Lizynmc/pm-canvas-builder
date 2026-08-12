@@ -14,9 +14,12 @@ import {
 import {
   AlignLeft,
   Download,
+  Eye,
+  EyeOff,
   ExternalLink,
   ListTree,
   RotateCcw,
+  X,
 } from "lucide-react";
 import {
   BLOCK_DEFINITION_MAP,
@@ -46,6 +49,7 @@ export default function Home() {
     emptyCanvasModel(DEFAULT_PALETTE_ID),
   );
   const [formMode, setFormMode] = useState<FormMode>("simple");
+  const [showPreview, setShowPreview] = useState(true);
 
   useEffect(() => {
     if (restored) toast.info("Rascunho restaurado do seu navegador.");
@@ -79,15 +83,36 @@ export default function Home() {
   }
 
   return (
-    <main className="grid lg:grid-cols-2 gap-6 p-6 max-w-[1600px] mx-auto w-full">
+    <main
+      className={`grid gap-6 p-6 max-w-[1600px] mx-auto w-full ${showPreview ? "lg:grid-cols-2" : "grid-cols-1"}`}
+    >
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold">PM Canvas Builder</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Preencha os 13 blocos do Project Model Canvas e baixe um HTML
-            pronto, com a mesma identidade visual e as mesmas animações do
-            modelo original.
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold">PM Canvas Builder</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Preencha os 13 blocos do Project Model Canvas e baixe um HTML
+              pronto, com a mesma identidade visual e as mesmas animações do
+              modelo original.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={() => setShowPreview((v) => !v)}
+          >
+            {showPreview ? (
+              <>
+                <EyeOff className="size-4" /> Ocultar preview
+              </>
+            ) : (
+              <>
+                <Eye className="size-4" /> Mostrar preview
+              </>
+            )}
+          </Button>
         </div>
 
         <PrivacyBanner />
@@ -146,7 +171,7 @@ export default function Home() {
           </div>
           <p className="text-xs text-muted-foreground">
             {formMode === "simple"
-              ? "Cole ou digite o texto de cada bloco — cada linha vira um item da lista. Linhas em branco não têm efeito especial, são só espaçamento."
+              ? "Cole ou digite o texto de cada bloco — deixe uma linha em branco entre um item e outro. Dentro de um item você pode quebrar a linha à vontade, sem virar um item novo."
               : "Editor completo: um campo por item, subgrupo com título (ex: \"Concorrentes\") e um detalhamento longo por bloco, que só aparece ao ampliar a seção."}
           </p>
         </div>
@@ -197,19 +222,33 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] flex flex-col gap-2">
-        <div className="flex items-center justify-between shrink-0">
-          <Label className="text-muted-foreground">
-            Pré-visualização ao vivo
-          </Label>
-          <Button variant="ghost" size="sm" onClick={handleOpenPreview}>
-            <ExternalLink className="size-4" /> Tela cheia
-          </Button>
+      {showPreview && (
+        <div className="lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] flex flex-col gap-2">
+          <div className="flex items-center justify-between shrink-0">
+            <Label className="text-muted-foreground">
+              Pré-visualização ao vivo
+            </Label>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={handleOpenPreview}>
+                <ExternalLink className="size-4" /> Tela cheia
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowPreview(false)}
+                aria-label="Fechar pré-visualização"
+                title="Fechar pré-visualização"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0">
+            <PreviewFrame model={model} />
+          </div>
         </div>
-        <div className="flex-1 min-h-0">
-          <PreviewFrame model={model} />
-        </div>
-      </div>
+      )}
     </main>
   );
 }
