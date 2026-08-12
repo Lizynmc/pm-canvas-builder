@@ -165,6 +165,19 @@ export const BLOCK_DEFINITION_MAP: Record<BlockId, BlockDefinition> =
     BlockDefinition
   >;
 
+// Agrupamento dos 13 blocos nas 5 colunas conceituais do Project Model
+// Canvas — usado só pra organizar o formulário, não afeta o layout do
+// canvas exportado (esse continua fixo em BLOCK_DEFINITIONS).
+export type CanvasSection = { label: string; blockIds: BlockId[] };
+
+export const CANVAS_SECTIONS: CanvasSection[] = [
+  { label: "Passado → Futuro", blockIds: ["justificativas", "objsmart", "beneficios"] },
+  { label: "O quê", blockIds: ["produto", "requisitos"] },
+  { label: "Quem", blockIds: ["stakeholders", "equipe"] },
+  { label: "Como", blockIds: ["restricoes", "premissas", "entregas"] },
+  { label: "Quando / Quanto", blockIds: ["riscos", "tempo", "custos"] },
+];
+
 export function emptyBlock(): CanvasBlock {
   return { groups: [{ items: [{ text: "" }] }] };
 }
