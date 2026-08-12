@@ -11,6 +11,7 @@ export function PreviewFrame({ model }: { model: CanvasModel }) {
     <iframe
       title="Pré-visualização do canvas"
       srcDoc={html}
+      allow="fullscreen"
       className="w-full h-full min-h-[600px] rounded-md border bg-white"
     />
   );

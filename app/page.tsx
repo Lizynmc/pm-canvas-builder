@@ -11,7 +11,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Download, RotateCcw } from "lucide-react";
+import { Download, ExternalLink, RotateCcw } from "lucide-react";
 import { BLOCK_DEFINITIONS, emptyCanvasModel } from "@/lib/canvas-schema";
 import { DEFAULT_PALETTE_ID } from "@/lib/palettes";
 import { renderCanvasHtml } from "@/lib/render-canvas-html";
@@ -49,6 +49,16 @@ export default function Home() {
     a.click();
     URL.revokeObjectURL(url);
     toast.success("HTML baixado.");
+  }
+
+  function handleOpenPreview() {
+    // Abre o HTML de verdade (o mesmo que seria baixado) numa aba própria —
+    // fora do iframe encolhido, dá pra testar tela cheia e zoom de verdade
+    // antes de decidir baixar.
+    const html = renderCanvasHtml(model);
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   function handleClear() {
@@ -127,14 +137,27 @@ export default function Home() {
           <Button onClick={handleDownload}>
             <Download className="size-4" /> Baixar HTML
           </Button>
+          <Button variant="outline" onClick={handleOpenPreview}>
+            <ExternalLink className="size-4" /> Abrir preview em nova aba
+          </Button>
           <Button variant="outline" onClick={handleClear}>
             <RotateCcw className="size-4" /> Limpar rascunho
           </Button>
         </div>
       </div>
 
-      <div className="lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)]">
-        <PreviewFrame model={model} />
+      <div className="lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] flex flex-col gap-2">
+        <div className="flex items-center justify-between shrink-0">
+          <Label className="text-muted-foreground">
+            Pré-visualização ao vivo
+          </Label>
+          <Button variant="ghost" size="sm" onClick={handleOpenPreview}>
+            <ExternalLink className="size-4" /> Tela cheia
+          </Button>
+        </div>
+        <div className="flex-1 min-h-0">
+          <PreviewFrame model={model} />
+        </div>
       </div>
     </main>
   );

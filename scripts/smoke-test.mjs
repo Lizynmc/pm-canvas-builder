@@ -101,6 +101,17 @@ await frameAfterReload
 console.log("   OK: conteúdo do rascunho restaurado aparece no preview");
 await shot("05-apos-refresh");
 
+console.log("7) abrir preview em nova aba (fora do iframe encolhido)");
+const [popup] = await Promise.all([
+  page.context().waitForEvent("page"),
+  page.getByRole("button", { name: "Abrir preview em nova aba" }).click(),
+]);
+await popup.waitForLoadState("domcontentloaded");
+await popup.locator("#sheet").waitFor({ timeout: 10000 });
+console.log("   OK: preview abriu em nova aba com o canvas renderizado");
+await popup.screenshot({ path: `${shotDir}/06-preview-nova-aba.png` });
+await popup.close();
+
 console.log("\n--- console errors ---");
 console.log(consoleErrors.length ? consoleErrors.join("\n") : "(nenhum)");
 
