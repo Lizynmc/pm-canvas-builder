@@ -19,12 +19,14 @@ import {
   ExternalLink,
   ListTree,
   RotateCcw,
+  Share2,
   X,
 } from "lucide-react";
 import { BLOCK_DEFINITIONS, emptyCanvasModel } from "@/lib/canvas-schema";
 import { DEFAULT_PALETTE_ID } from "@/lib/palettes";
 import type { FormMode } from "@/lib/form-mode";
 import { renderCanvasHtml } from "@/lib/render-canvas-html";
+import { GENERATOR_URL, shareMessage } from "@/lib/project-links";
 import { useDraft } from "@/lib/use-draft";
 import { BlockEditor } from "@/components/canvas-form/block-editor";
 import { PalettePicker } from "@/components/palette-picker";
@@ -81,6 +83,16 @@ export default function CanvasFormPage() {
     toast.success("Rascunho limpo.");
   }
 
+  async function handleCopyLink() {
+    const url = GENERATOR_URL || window.location.origin;
+    try {
+      await navigator.clipboard.writeText(shareMessage(url));
+      toast.success("Link copiado, com o texto de divulgação junto.");
+    } catch {
+      toast.error("Seu navegador não deixou copiar. Copie o endereço da barra.");
+    }
+  }
+
   return (
     <main
       className={`grid gap-6 p-6 max-w-[1600px] mx-auto w-full ${showPreview ? "lg:grid-cols-2" : "grid-cols-1"}`}
@@ -95,11 +107,14 @@ export default function CanvasFormPage() {
               quiser.
             </p>
           </div>
+          <div className="flex shrink-0 items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleCopyLink}>
+            <Share2 className="size-4" /> Compartilhar
+          </Button>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="shrink-0"
             onClick={() => setShowPreview((v) => !v)}
           >
             {showPreview ? (
@@ -112,6 +127,7 @@ export default function CanvasFormPage() {
               </>
             )}
           </Button>
+          </div>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">

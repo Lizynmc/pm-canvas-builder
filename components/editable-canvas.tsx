@@ -119,7 +119,7 @@ export function EditableCanvas({
       title="Canvas editável"
       allow="fullscreen"
       className="w-full rounded-md"
-      style={{ minHeight: 900 }}
+      style={{ minHeight: 1040 }}
     />
   );
 }

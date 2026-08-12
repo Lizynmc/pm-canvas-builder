@@ -283,6 +283,16 @@ tracinho pontilhado clicável antes do texto — não volte a escrever nada ali.
 
 - **O merge em `main` ainda não foi enviado ao GitHub.** Foi feito local, a
   pedido do usuário, e é fast-forward — `git push` resolve quando ele quiser.
+- **Ações de clique ainda recriam o iframe inteiro (pisca).** Digitar já não
+  pisca, mas `+ item`, `+ sublista`, remover e marcar pendente sim, e o
+  usuário reclamou disso. O conserto desenhado é remendar **só o bloco que
+  mudou** dentro do iframe (`renderBlockSection` é puro; o `srcdoc` é
+  same-origin, então dá pra trocar o `outerHTML` do `[data-block-id]` pelo
+  novo) e cair no reload atual só quando a ampliação estiver aberta, porque o
+  card ampliado é um clone com abas montadas na mão. Precisaria também trocar
+  o listener de clique do header por delegação, senão o bloco remendado perde
+  o zoom. Não foi implementado: o usuário interrompeu no meio e pediu pra
+  reverter o que estava em curso.
 - **As duas abordagens agora convivem em rotas diferentes.** `/` é a edição
   direta no canvas; `/canvas-form` é o formulário de `test-simple-form`
   (acordeão por coluna do canvas, modo simples/completo, preview ao lado),
@@ -315,6 +325,25 @@ tracinho pontilhado clicável antes do texto — não volte a escrever nada ali.
   fundo da paleta.** O iframe não tem fundo nem borda próprios: quem o envolve
   pinta o mesmo `pageBg`, e a emenda entre os dois some. Se mexer no iframe,
   não devolva `bg-white`/`border` pra ele.
+- **Na edição, a folha usa toda a largura do iframe** (`EDITABLE_CSS`; o
+  arquivo exportado continua com os 1280px). A regra que faz isso funcionar é
+  `body > div:not(.backdrop) { width: 100% }`: a folha não é filha direta do
+  `body`, está dentro de um `div` que é o item flex — sem largura nele, o
+  `width:100%` da folha não tem em quê se apoiar e ela encolhe pro tamanho do
+  conteúdo (ficava em 970px de 1258 disponíveis). Se um dia a folha voltar a
+  aparecer estreita com cinza dos lados, é essa regra que sumiu.
+- **O crédito não fica dentro do canvas exportado.** Já ficou (duas linhas
+  embaixo da folha) e o usuário mandou tirar: o arquivo baixado é o trabalho
+  de quem preencheu. A divulgação da ferramenta vive no botão
+  **Compartilhar**, que copia o link com a frase de `shareMessage()`. Nessa
+  remoção foi junto a atribuição do método a José Finocchio Júnior e as dicas
+  de uso (ampliar seção, modo slide) — se for repor, reponha só o que o
+  usuário pedir.
+- **Nunca use crase em comentário dentro de `EDITABLE_CSS`, `ADVANCED_CSS`,
+  `INTERACTION_SCRIPT` ou `EDITABLE_SCRIPT`.** Eles são template literals: uma
+  crase no meio de um comentário fecha a string e o arquivo inteiro deixa de
+  compilar, com erro de sintaxe apontando pra um lugar que parece não ter
+  nada a ver.
 - **Menos texto de apoio na tela, a pedido do usuário.** Saíram os títulos das
   colunas conceituais no formulário ("Passado → Futuro", "O quê"…) e o exemplo
   comprido do placeholder do modo simples. No lugar da separação por coluna,

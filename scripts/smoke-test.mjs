@@ -6,7 +6,10 @@ mkdirSync(shotDir, { recursive: true });
 
 const consoleErrors = [];
 const browser = await chromium.launch({ args: ["--no-sandbox"] });
-const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+const page = await browser.newPage({
+  viewport: { width: 1440, height: 1100 },
+  permissions: ["clipboard-read", "clipboard-write"],
+});
 page.on("console", (msg) => {
   if (msg.type() === "error") consoleErrors.push(msg.text());
 });
@@ -253,13 +256,14 @@ const exportaTextoCompleto =
 console.log(`   sublista com título no export: ${exportaSublista}`);
 console.log(`   detalhamento no export: ${exportaDetalhe}`);
 console.log(`   texto completo de Requisitos no export: ${exportaTextoCompleto}`);
-// O HTML exportado é o que circula sozinho — tem que levar o crédito junto.
+// O crédito NÃO fica dentro do canvas: o arquivo baixado é o trabalho da
+// pessoa. Quem divulga a ferramenta é o texto do botão "Compartilhar".
 const exportaCredito =
-  downloadedHtml.includes("Gerador de PM Canvas feito por") &&
-  downloadedHtml.includes("https://opensource.org/license/mit") &&
-  downloadedHtml.includes("licença MIT");
-console.log(`   crédito + licença MIT no export: ${exportaCredito}`);
-if (!exportaCredito) console.log("   FALHA: o export devia levar o crédito e a licença");
+  downloadedHtml.includes("Gerador de PM Canvas") ||
+  downloadedHtml.includes("licença MIT") ||
+  downloadedHtml.includes("José Finocchio");
+console.log(`   crédito dentro do canvas exportado (esperado false): ${exportaCredito}`);
+if (exportaCredito) console.log("   FALHA: o export não devia levar crédito nenhum");
 if (!exportaSublista || !exportaDetalhe || !exportaTextoCompleto) {
   console.log("   FALHA: o que foi escrito no modo completo não chegou no export");
 }
@@ -273,6 +277,16 @@ await frame
   .waitFor({ timeout: 10000 });
 console.log("   OK: edições feitas direto no canvas sobrevivem ao refresh (localStorage)");
 await shot("14-apos-refresh");
+
+console.log("13.5) botão Compartilhar copia o link com o texto de divulgação");
+await page.getByRole("button", { name: "Compartilhar" }).click();
+const copiado = await page.evaluate(() => navigator.clipboard.readText());
+const textoOk =
+  copiado.includes("Acesse o gerador de PM Canvas em") &&
+  copiado.includes("Lizynmc") &&
+  copiado.includes("licença MIT");
+console.log(`   texto copiado: ${JSON.stringify(copiado)}`);
+if (!textoOk) console.log("   FALHA: o texto de compartilhamento saiu errado");
 
 console.log("14.5) licença MIT no rodapé do app");
 const licencaNoRodape = await page.getByRole("link", { name: "Licença MIT" }).count();

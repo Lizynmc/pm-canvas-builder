@@ -15,3 +15,10 @@ export const LATTES_URL = "http://lattes.cnpq.br/7960579048014901";
 
 export const LICENSE_NAME = "MIT";
 export const LICENSE_URL = "https://opensource.org/license/mit";
+
+// Texto que vai junto quando alguém copia o link do gerador. O crédito mora
+// aqui, e não dentro do canvas exportado: o arquivo que a pessoa baixa é o
+// trabalho dela, quem divulga a ferramenta é quem compartilha o link.
+export function shareMessage(url: string): string {
+  return `Acesse o gerador de PM Canvas em ${url} — feito por ${AUTHOR_GITHUB_HANDLE} no GitHub. Sob licença ${LICENSE_NAME}.`;
+}

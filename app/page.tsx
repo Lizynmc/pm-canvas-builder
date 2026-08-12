@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Download, ExternalLink, RotateCcw } from "lucide-react";
+import { Download, ExternalLink, RotateCcw, Share2 } from "lucide-react";
 import { emptyCanvasModel } from "@/lib/canvas-schema";
 import { DEFAULT_PALETTE_ID, getPalette } from "@/lib/palettes";
 import { renderCanvasHtml } from "@/lib/render-canvas-html";
+import { GENERATOR_URL, shareMessage } from "@/lib/project-links";
 import { useDraft } from "@/lib/use-draft";
 import { useAdvancedMode } from "@/lib/use-advanced-mode";
 import { applyCanvasEdit } from "@/lib/apply-canvas-edit";
@@ -61,15 +62,37 @@ export default function Home() {
     toast.success("Rascunho limpo.");
   }
 
+  async function handleCopyLink() {
+    // GENERATOR_URL só existe depois do deploy; até lá, o link é o endereço
+    // em que a pessoa está agora.
+    const url = GENERATOR_URL || window.location.origin;
+    try {
+      await navigator.clipboard.writeText(shareMessage(url));
+      toast.success("Link copiado, com o texto de divulgação junto.");
+    } catch {
+      toast.error("Seu navegador não deixou copiar. Copie o endereço da barra.");
+    }
+  }
+
   return (
-    <main className="max-w-[1400px] mx-auto w-full p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">PM Canvas Builder</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Edite direto no canvas abaixo: clique em qualquer item pra escrever,
-          passe o mouse pra ver os controles de remover e marcar como
-          pendente (●), e use o botão &quot;+ item&quot; no fim de cada lista.
-        </p>
+    <main className="max-w-[1800px] mx-auto w-full p-6 space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">PM Canvas Builder</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Edite direto no canvas abaixo: clique em qualquer item pra escrever,
+            passe o mouse pra ver os controles de remover e marcar como
+            pendente (●), e use o botão &quot;+ item&quot; no fim de cada lista.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          onClick={handleCopyLink}
+        >
+          <Share2 className="size-4" /> Compartilhar
+        </Button>
       </div>
 
       <div className="space-y-4">
@@ -126,7 +149,7 @@ export default function Home() {
           }
         />
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap justify-center gap-2">
           <Button onClick={handleDownload}>
             <Download className="size-4" /> Baixar HTML
           </Button>

@@ -8,13 +8,6 @@ import {
 import { GSAP_SOURCE } from "./gsap-inline";
 import { escapeHtml } from "./html-escape";
 import { getPalette } from "./palettes";
-import {
-  AUTHOR_GITHUB_HANDLE,
-  AUTHOR_GITHUB_URL,
-  GENERATOR_URL,
-  LICENSE_NAME,
-  LICENSE_URL,
-} from "./project-links";
 
 function renderGroups(block: CanvasBlock): string {
   return block.groups
@@ -499,6 +492,7 @@ const EDITABLE_SCRIPT = `
     window.parent.postMessage(Object.assign({ source: "pmc-canvas" }, msg), "*");
   }
 
+
   // A seção ampliada é um CLONE do bloco. Quem edita lá dentro mexe no clone,
   // não no card do grid — então o texto é copiado de volta pro campo original
   // (mesmos data-*). Sem isso, o app precisaria recarregar o iframe a cada
@@ -622,6 +616,19 @@ const EDITABLE_SCRIPT = `
 `;
 
 const EDITABLE_CSS = `
+  /* Só na edição dentro do app: a folha usa toda a largura disponível e os
+     blocos ficam mais altos, pra caber texto sem virar um campo apertado. O
+     arquivo exportado continua com os 1280px e as alturas originais — este
+     bloco de CSS não vai junto. */
+  body { padding: 10px; }
+  /* A folha mora dentro de um div que é o item flex do body; sem largura nele,
+     o width:100% da folha não tem em quê se apoiar e ela encolhe pro tamanho
+     do conteúdo. O :not(.backdrop) evita mexer no véu do modo slide. */
+  body > div:not(.backdrop) { width: 100%; }
+  .sheet { max-width: none; }
+  .grid { grid-template-rows: repeat(6, minmax(160px, auto)); }
+  .block { padding: 14px 16px; }
+
   [contenteditable] { outline-offset: 2px; border-radius: 4px; cursor: text; }
   [contenteditable]:hover { background: var(--accent-bg); }
   [contenteditable]:focus { outline: 2px solid var(--accent); background: var(--accent-bg); }
@@ -843,14 +850,6 @@ export function renderCanvasHtml(
     renderBlockSection(def, model.blocks[def.id], editable, advanced),
   ).join("\n");
 
-  // Crédito que viaja junto com o arquivo exportado. Enquanto não houver
-  // endereço público do gerador, a frase não promete um link que não existe —
-  // fica só a autoria e a licença.
-  const autor = `<a href="${AUTHOR_GITHUB_URL}" target="_blank" rel="noopener noreferrer">${escapeHtml(AUTHOR_GITHUB_HANDLE)}</a>`;
-  const licenca = `<a href="${LICENSE_URL}" target="_blank" rel="noopener noreferrer">licença ${LICENSE_NAME}</a>`;
-  const creditLine = GENERATOR_URL
-    ? `Acesse o gerador de PM Canvas em <a href="${GENERATOR_URL}" target="_blank" rel="noopener noreferrer">${escapeHtml(GENERATOR_URL)}</a>, feito por ${autor} no GitHub. Sob ${licenca}.`
-    : `Gerador de PM Canvas feito por ${autor} no GitHub. Sob ${licenca}.`;
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -1009,13 +1008,6 @@ export function renderCanvasHtml(
   .footer .brand:hover svg { transform: scale(1.15); }
   .footer .brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .footer .meta { font-size: 10.5px; color: var(--footer-text); }
-  .credit {
-    max-width: 1280px;
-    font-size: 9.5px;
-    color: var(--muted);
-    margin-top: 6px;
-  }
-  .credit a { color: var(--accent-dark); text-decoration: underline; }
 
   .backdrop {
     position: fixed;
@@ -1042,7 +1034,6 @@ export function renderCanvasHtml(
     grid-template-rows: repeat(6, 1fr);
     overflow: hidden;
   }
-  body.slide-mode .credit { display: none; }
   /* Conteúdo que não cabe no bloco em 1280x720 rola em vez de ser cortado. */
   body.slide-mode .block { overflow-y: auto; overflow-x: hidden; padding: 8px 12px; }
   body.slide-mode .block header { margin-bottom: 5px; }
@@ -1298,8 +1289,6 @@ ${blocksHtml}
     ${footerMeta}
   </div>
 </main>
-<p class="credit">Modelo: Project Model Canvas, de José Finocchio Júnior. Itens destacados estão pendentes de decisão. Clique no título de uma seção para ampliá-la, ou no título do canvas (rodapé) para o modo slide 16:9.</p>
-<p class="credit">${creditLine}</p>
 </div>
 
 ${editable ? `<script>window.__pmcEditable = true;${autoZoomId ? `window.__pmcAutoZoom = ${JSON.stringify(autoZoomId)};` : ""}</script>` : ""}
