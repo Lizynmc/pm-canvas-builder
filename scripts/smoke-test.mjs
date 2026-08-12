@@ -18,18 +18,34 @@ async function shot(name) {
   console.log(`screenshot: ${name}.png`);
 }
 
-console.log("1) nav + preencher bloco Justificativas");
+console.log("1) modo simples: colar texto multi-linha vira itens");
 await page.goto("http://localhost:3000/", { waitUntil: "networkidle" });
 await page.getByRole("button", { name: "Justificativas" }).click();
-const firstItemInput = page.locator('input[placeholder="Item"]').first();
-await firstItemInput.fill("Tutores sem com quem deixar o pet");
 const frame = page.frameLocator('iframe[title="Pré-visualização do canvas"]');
+const simpleTextarea = page.locator("textarea").first();
+await simpleTextarea.fill(
+  "Tutores sem com quem deixar o pet\n\nFalta termo de responsabilidade",
+);
 await frame.locator("text=Tutores sem com quem deixar o pet").waitFor({ timeout: 10000 });
-console.log("   OK: item normal aparece no preview");
+await frame.locator("text=Falta termo de responsabilidade").waitFor({ timeout: 10000 });
+const liCount = await frame.locator(".block.b-justificativas li").count();
+console.log(`   <li> gerados a partir do texto colado (esperado 2, linha em branco ignorada): ${liCount}`);
+if (liCount !== 2) {
+  console.log("   FALHA: esperava exatamente 2 <li>");
+} else {
+  console.log("   OK: modo simples converte linhas em itens e ignora linha em branco");
+}
+await shot("01-modo-simples");
 
-await page.getByRole("button", { name: "Item", exact: true }).first().click();
+console.log("1b) trocar pro modo avançado sem perder o conteúdo, marcar 'em aberto'");
+await page.getByRole("button", { name: "Modo avançado" }).click();
 const secondItemInput = page.locator('input[placeholder="Item"]').nth(1);
-await secondItemInput.fill("Falta termo de responsabilidade");
+await secondItemInput.waitFor({ timeout: 10000 });
+const secondItemValue = await secondItemInput.inputValue();
+console.log(`   valor do segundo item após trocar de modo: "${secondItemValue}"`);
+if (secondItemValue !== "Falta termo de responsabilidade") {
+  console.log("   FALHA: conteúdo não foi preservado ao trocar de modo");
+}
 await page.locator('label:has-text("Em aberto")').nth(1).getByRole("switch").click();
 await frame.locator("li.open", { hasText: "Falta termo de responsabilidade" }).waitFor({ timeout: 10000 });
 console.log("   OK: item 'em aberto' aparece destacado (li.open) no preview");

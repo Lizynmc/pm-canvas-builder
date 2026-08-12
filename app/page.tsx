@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,13 +11,20 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Download, ExternalLink, RotateCcw } from "lucide-react";
+import {
+  AlignLeft,
+  Download,
+  ExternalLink,
+  ListTree,
+  RotateCcw,
+} from "lucide-react";
 import {
   BLOCK_DEFINITION_MAP,
   CANVAS_SECTIONS,
   emptyCanvasModel,
 } from "@/lib/canvas-schema";
 import { DEFAULT_PALETTE_ID } from "@/lib/palettes";
+import type { FormMode } from "@/lib/form-mode";
 import { renderCanvasHtml } from "@/lib/render-canvas-html";
 import { useDraft } from "@/lib/use-draft";
 import { BlockEditor } from "@/components/canvas-form/block-editor";
@@ -38,6 +45,7 @@ export default function Home() {
   const { model, setModel, clearDraft, restored } = useDraft(
     emptyCanvasModel(DEFAULT_PALETTE_ID),
   );
+  const [formMode, setFormMode] = useState<FormMode>("simple");
 
   useEffect(() => {
     if (restored) toast.info("Rascunho restaurado do seu navegador.");
@@ -117,6 +125,32 @@ export default function Home() {
           />
         </div>
 
+        <div className="space-y-1.5 rounded-md border p-3">
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={formMode === "simple" ? "default" : "outline"}
+              onClick={() => setFormMode("simple")}
+            >
+              <AlignLeft className="size-4" /> Modo simples
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={formMode === "advanced" ? "default" : "outline"}
+              onClick={() => setFormMode("advanced")}
+            >
+              <ListTree className="size-4" /> Modo avançado
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {formMode === "simple"
+              ? "Cole ou digite o texto de cada bloco — cada linha vira um item da lista. Linhas em branco não têm efeito especial, são só espaçamento."
+              : "Editor completo: um campo por item, subgrupo com título (ex: \"Concorrentes\") e um detalhamento longo por bloco, que só aparece ao ampliar a seção."}
+          </p>
+        </div>
+
         <div className="space-y-5">
           {CANVAS_SECTIONS.map((section) => (
             <div key={section.label} className="space-y-1.5">
@@ -133,6 +167,7 @@ export default function Home() {
                         <BlockEditor
                           def={def}
                           block={model.blocks[id]}
+                          mode={formMode}
                           onChange={(block) =>
                             setModel({
                               ...model,

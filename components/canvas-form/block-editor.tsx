@@ -1,36 +1,31 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { ItemsEditor } from "@/components/items-editor";
+import { SimpleItemsEditor } from "@/components/simple-items-editor";
 import { ListEditor } from "@/components/list-editor";
 import { DetailEditor } from "@/components/detail-editor";
 import type { BlockDefinition, CanvasBlock } from "@/lib/canvas-schema";
+import type { FormMode } from "@/lib/form-mode";
 
 export function BlockEditor({
   def,
   block,
+  mode,
   onChange,
 }: {
   def: BlockDefinition;
   block: CanvasBlock;
+  mode: FormMode;
   onChange: (block: CanvasBlock) => void;
 }) {
   const mainGroup = block.groups[0] ?? { items: [{ text: "" }] };
   const extraGroups = block.groups.slice(1);
   const hasDetail = !!block.detail && block.detail.length > 0;
-  const [showAdvanced, setShowAdvanced] = useState(
-    extraGroups.length > 0 || hasDetail,
-  );
+  const hasAdvancedContent = extraGroups.length > 0 || hasDetail;
 
   function updateMainItems(items: typeof mainGroup.items) {
     onChange({ ...block, groups: [{ ...mainGroup, items }, ...extraGroups] });
@@ -67,19 +62,26 @@ export function BlockEditor({
         </div>
       )}
 
-      <ItemsEditor items={mainGroup.items} onChange={updateMainItems} />
-
-      <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
-        <CollapsibleTrigger className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ChevronRight
-            className={`size-4 transition-transform ${showAdvanced ? "rotate-90" : ""}`}
+      {mode === "simple" ? (
+        <>
+          <SimpleItemsEditor
+            items={mainGroup.items}
+            onChange={updateMainItems}
           />
-          Opções avançadas (subgrupo com título, detalhamento completo)
-        </CollapsibleTrigger>
-        <CollapsibleContent className="space-y-4 pt-3">
-          <ListEditor groups={extraGroups} onChange={updateExtraGroups} />
+          {hasAdvancedContent && (
+            <p className="text-xs text-muted-foreground">
+              Este bloco também tem subgrupo com título ou detalhamento
+              completo preenchido — mude pro modo avançado pra ver ou editar.
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          <ItemsEditor items={mainGroup.items} onChange={updateMainItems} />
 
           <Separator />
+
+          <ListEditor groups={extraGroups} onChange={updateExtraGroups} />
 
           <div className="flex items-center gap-2">
             <Switch
@@ -97,8 +99,8 @@ export function BlockEditor({
               onChange={(detail) => onChange({ ...block, detail })}
             />
           )}
-        </CollapsibleContent>
-      </Collapsible>
+        </>
+      )}
     </div>
   );
 }
