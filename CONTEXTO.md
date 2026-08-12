@@ -352,8 +352,14 @@ tracinho pontilhado clicável antes do texto — não volte a escrever nada ali.
   `canvas-schema.ts`, mas hoje ninguém usa.
 - **LinkedIn:** `LINKEDIN_URL` em `app/layout.tsx` está vazia de propósito —
   o link só aparece no footer quando o usuário mandar a URL real.
-- **Deploy:** ainda não configurado (nem perguntado). Diferente do `fspet`
-  (Vercel automático a cada push na `main`), aqui nada foi decidido.
+- **Deploy: Vercel, publicado em https://pm-canvas-builder.vercel.app**
+  (projeto `pm-canvas-builder`, conta `lizynmc`). Foi feito pela CLI, a partir
+  da pasta local — **não** está ligado ao GitHub, então push na `main` não
+  publica nada: quem publica é `vercel --prod` rodado aqui. Diferente do
+  `fspet`, que tinha deploy automático. O `package-lock.json` do scaffold npm
+  foi removido nesse processo: ele estava parado no commit inicial e, com dois
+  lockfiles no repo, a Vercel podia escolher npm e quebrar o install.
+  `output: "export"` funciona lá sem configuração extra.
 - **`test-ui-in-canvas` e `test-canvas-completo` só existem localmente** — as
   outras três branches (`main`, `test-ui`, `test-simple-form`) já foram
   enviadas ao GitHub.

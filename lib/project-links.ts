@@ -2,12 +2,10 @@
 // no sidebar e — o que mais importa — dentro do HTML exportado, que é o
 // arquivo que circula por aí sem o app junto.
 
-// Endereço público do gerador. Vazio até existir deploy: o repositório é
-// privado e vai continuar assim, então não há link de repo pra oferecer.
-// Assim que o app for publicado, basta preencher aqui — o crédito do HTML
-// exportado passa a trazer a frase completa ("Acesse o gerador em …")
-// sozinho, ver renderCanvasHtml.
-export const GENERATOR_URL = "";
+// Endereço público do gerador (Vercel). É o link que o botão "Compartilhar"
+// copia — precisa ser este, e não `window.location.origin`, senão quem
+// compartilha rodando local acabaria divulgando um localhost.
+export const GENERATOR_URL = "https://pm-canvas-builder.vercel.app";
 
 export const AUTHOR_GITHUB_URL = "https://github.com/Lizynmc";
 export const AUTHOR_GITHUB_HANDLE = "Lizynmc";
