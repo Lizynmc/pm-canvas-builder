@@ -49,10 +49,50 @@ function renderDetail(block: CanvasBlock): string {
     .join("\n");
 }
 
-function renderBlockSection(def: (typeof BLOCK_DEFINITIONS)[number], block: CanvasBlock): string {
-  const subtitle = def.fixedSubtitle ?? (block.subtitle?.trim() || "");
-  const small = subtitle ? ` <small>${escapeHtml(subtitle)}</small>` : "";
-  const groupsHtml = renderGroups(block);
+// Modo editável: os itens do grupo principal (groups[0]) viram <li>
+// editáveis diretamente no canvas, incluindo os vazios (pra sempre sobrar um
+// slot pra digitar), com botões de remover/marcar pendente/adicionar. Cada
+// controle carrega os índices em data-* pra o script injetado saber o que
+// avisar ao React via postMessage. Subgrupos e detalhamento continuam só de
+// leitura nesta versão — editáveis apenas pelo formulário (fora desta
+// experiência de edição direta no canvas).
+function renderEditableMainGroup(blockId: string, block: CanvasBlock): string {
+  const items = block.groups[0]?.items ?? [{ text: "" }];
+  const lis = items
+    .map((item, i) => {
+      const pendingClass = item.pending ? " open" : "";
+      const attrs = `data-block="${blockId}" data-group="0" data-item="${i}"`;
+      return `<li class="li-edit${pendingClass}">
+        <span class="item-text" contenteditable="true" data-role="item-text" data-placeholder="Adicionar item…" ${attrs}>${escapeHtml(item.text)}</span>
+        <span class="item-controls">
+          <button type="button" data-action="toggle-pending" ${attrs} title="Marcar/desmarcar como pendente">●</button>
+          <button type="button" data-action="remove-item" ${attrs} title="Remover item">✕</button>
+        </span>
+      </li>`;
+    })
+    .join("");
+  return `<ul>${lis}</ul><button type="button" class="add-item-btn" data-action="add-item" data-block="${blockId}" data-group="0">+ item</button>`;
+}
+
+function renderBlockSection(
+  def: (typeof BLOCK_DEFINITIONS)[number],
+  block: CanvasBlock,
+  editable: boolean,
+): string {
+  const fixedSubtitle = def.fixedSubtitle;
+  const subtitle = fixedSubtitle ?? (block.subtitle?.trim() || "");
+  const small = fixedSubtitle
+    ? ` <small>${escapeHtml(fixedSubtitle)}</small>`
+    : editable
+      ? ` <small contenteditable="true" data-role="subtitle-text" data-placeholder="Adicionar subtítulo…" data-block="${def.id}">${escapeHtml(subtitle)}</small>`
+      : subtitle
+        ? ` <small>${escapeHtml(subtitle)}</small>`
+        : "";
+  // Subgrupos (groups[1:]) continuam só leitura mesmo em modo editável.
+  const readOnlyGroupsHtml = renderGroups({ ...block, groups: block.groups.slice(1) });
+  const mainGroupHtml = editable
+    ? renderEditableMainGroup(def.id, block)
+    : renderGroups({ ...block, groups: block.groups.slice(0, 1) });
   const detailHtml = renderDetail(block);
   const hasDetail = detailHtml.trim().length > 0;
 
@@ -63,7 +103,8 @@ function renderBlockSection(def: (typeof BLOCK_DEFINITIONS)[number], block: Canv
         <h2>${escapeHtml(def.title)}${small}</h2>
       </header>
       <div class="block-summary">
-        ${groupsHtml}
+        ${mainGroupHtml}
+        ${readOnlyGroupsHtml}
       </div>${hasDetail ? `\n      <div class="block-detail">${detailHtml}</div>` : ""}
     </section>`;
 }
@@ -244,7 +285,10 @@ const INTERACTION_SCRIPT = `
   for (var i = 0; i < headers.length; i++) {
     (function (h) {
       h.title = "Ampliar seção";
-      h.addEventListener("click", function () {
+      h.addEventListener("click", function (e) {
+        // Em modo editável, clicar num campo de texto (o subtítulo, dentro
+        // do header) não deve também abrir o zoom da seção.
+        if (e.target.closest && e.target.closest("[contenteditable]")) return;
         openZoom(h.parentElement);
       });
     })(headers[i]);
@@ -252,16 +296,116 @@ const INTERACTION_SCRIPT = `
 })();
 `;
 
-export function renderCanvasHtml(model: CanvasModel): string {
+// Só incluído quando editable=true. Faz o canvas postar mensagens pro
+// window.parent a cada edição — texto (só no blur, pra não brigar com o
+// cursor a cada tecla), clique em remover/adicionar/marcar pendente. Usa
+// delegação de evento no document (focusout/click borbulham) em vez de
+// listeners por elemento, então funciona também dentro do card clonado pelo
+// zoom, sem precisar religar nada depois do clone.
+const EDITABLE_SCRIPT = `
+(function () {
+  function post(msg) {
+    window.parent.postMessage(Object.assign({ source: "pmc-canvas" }, msg), "*");
+  }
+
+  document.addEventListener("focusout", function (e) {
+    var el = e.target;
+    if (!el.matches) return;
+    if (el.matches('[data-role="item-text"]')) {
+      post({
+        type: "item-text",
+        blockId: el.dataset.block,
+        groupIndex: Number(el.dataset.group),
+        itemIndex: Number(el.dataset.item),
+        text: el.textContent
+      });
+    } else if (el.matches('[data-role="subtitle-text"]')) {
+      post({ type: "subtitle-text", blockId: el.dataset.block, text: el.textContent });
+    } else if (el.matches('[data-role="footer-meta"]')) {
+      post({ type: "footer-meta-text", text: el.textContent });
+    }
+  });
+
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    e.stopPropagation();
+    var action = btn.dataset.action;
+    var blockId = btn.dataset.block;
+    var groupIndex = Number(btn.dataset.group);
+    var itemIndex = btn.dataset.item !== undefined ? Number(btn.dataset.item) : undefined;
+    if (action === "remove-item") {
+      post({ type: "item-remove", blockId: blockId, groupIndex: groupIndex, itemIndex: itemIndex });
+    } else if (action === "add-item") {
+      post({ type: "item-add", blockId: blockId, groupIndex: groupIndex });
+    } else if (action === "toggle-pending") {
+      post({ type: "item-toggle-pending", blockId: blockId, groupIndex: groupIndex, itemIndex: itemIndex });
+    }
+  });
+})();
+`;
+
+const EDITABLE_CSS = `
+  [contenteditable] { outline-offset: 2px; border-radius: 4px; cursor: text; }
+  [contenteditable]:hover { background: var(--accent-bg); }
+  [contenteditable]:focus { outline: 2px solid var(--accent); background: var(--accent-bg); }
+  [contenteditable]:empty::before {
+    content: attr(data-placeholder);
+    color: var(--muted);
+    opacity: 0.7;
+    cursor: text;
+  }
+  .block li.li-edit {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
+    padding-left: 12px;
+  }
+  .block li.li-edit .item-text { flex: 1; min-width: 0; }
+  .item-controls { display: flex; gap: 2px; flex-shrink: 0; }
+  .item-controls button {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 9px;
+    color: var(--line);
+    line-height: 1;
+    padding: 3px;
+  }
+  .block li.li-edit.open .item-controls button[data-action="toggle-pending"] { color: var(--accent-dark); }
+  .item-controls button:hover { color: var(--accent-dark); }
+  .add-item-btn {
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--muted);
+    background: none;
+    border: 1px dashed var(--line);
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+  .add-item-btn:hover { color: var(--accent-dark); border-color: var(--accent); }
+`;
+
+export function renderCanvasHtml(
+  model: CanvasModel,
+  options?: { editable?: boolean },
+): string {
+  const editable = options?.editable ?? false;
   const palette = getPalette(model.paletteId);
   const title = escapeHtml(model.projectName || "PM Canvas");
   const sheetLabel = escapeHtml(
     `Project Model Canvas do projeto ${model.projectName || "sem nome"}`,
   );
-  const footerMeta = escapeHtml(model.footerMeta);
+  const footerMetaText = escapeHtml(model.footerMeta);
+  const footerMeta = editable
+    ? `<span class="meta" contenteditable="true" data-role="footer-meta" data-placeholder="Adicionar texto do rodapé…">${footerMetaText}</span>`
+    : `<span class="meta">${footerMetaText}</span>`;
 
   const blocksHtml = BLOCK_DEFINITIONS.map((def) =>
-    renderBlockSection(def, model.blocks[def.id]),
+    renderBlockSection(def, model.blocks[def.id], editable),
   ).join("\n");
 
   return `<!DOCTYPE html>
@@ -646,6 +790,7 @@ export function renderCanvasHtml(model: CanvasModel): string {
     .backdrop, .slide-close { display: none !important; }
     @page { size: A4 landscape; margin: 8mm; }
   }
+  ${editable ? EDITABLE_CSS : ""}
 </style>
 </head>
 <body>
@@ -662,7 +807,7 @@ ${blocksHtml}
       Project Model Canvas
       <svg viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
     </button>
-    <span class="meta">${footerMeta}</span>
+    ${footerMeta}
   </div>
 </main>
 <p class="credit">Modelo: Project Model Canvas, de José Finocchio Júnior. Itens destacados estão pendentes de decisão. Clique no título de uma seção para ampliá-la, ou no título do canvas (rodapé) para o modo slide 16:9.</p>
@@ -670,6 +815,7 @@ ${blocksHtml}
 
 <script>${GSAP_SOURCE}</script>
 <script>${INTERACTION_SCRIPT}</script>
+${editable ? `<script>${EDITABLE_SCRIPT}</script>` : ""}
 </body>
 </html>
 `;
