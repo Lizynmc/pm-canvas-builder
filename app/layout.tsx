@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import Link from "next/link";
 import { Link2 } from "lucide-react";
+import { Analytics } from "@vercel/analytics/next";
 import { AppSidebar } from "@/components/app-sidebar";
 import { LICENSE_NAME, LICENSE_URL } from "@/lib/project-links";
 import { Toaster } from "@/components/ui/sonner";
@@ -58,6 +59,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </footer>
         <Toaster />
+        {/* Contagem de visita/página da Vercel. Não vê nada do que a pessoa
+            preenche: o canvas continua vivendo só no navegador dela. */}
+        <Analytics />
       </body>
     </html>
   );
