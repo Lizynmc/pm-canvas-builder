@@ -6,10 +6,13 @@ mkdirSync(shotDir, { recursive: true });
 
 const consoleErrors = [];
 const browser = await chromium.launch({ args: ["--no-sandbox"] });
-const page = await browser.newPage({
+// Contexto explícito (em vez de browser.newPage) pra poder abrir uma segunda
+// aba no mesmo navegador — é o que distingue "recarregou" de "fechou e abriu".
+const context = await browser.newContext({
   viewport: { width: 1440, height: 1100 },
   permissions: ["clipboard-read", "clipboard-write"],
 });
+const page = await context.newPage();
 page.on("console", (msg) => {
   if (msg.type() === "error") consoleErrors.push(msg.text());
 });
@@ -270,12 +273,29 @@ if (!exportaSublista || !exportaDetalhe || !exportaTextoCompleto) {
 
 console.log("14) refresh e restauração do rascunho");
 await page.reload({ waitUntil: "networkidle" });
-await page.locator("text=Rascunho restaurado do seu navegador.").waitFor({ timeout: 10000 });
 await frame
   .locator(".block.b-justificativas")
   .getByText("Processo de matricula ainda e feito no papel")
   .waitFor({ timeout: 10000 });
 console.log("   OK: edições feitas direto no canvas sobrevivem ao refresh (localStorage)");
+// O aviso de restauração só aparece uma vez por aba (marca no sessionStorage).
+// Dentro da mesma aba — trocando de rota ou recarregando — ele não repete.
+// Este primeiro reload é a primeira restauração desta aba, então o aviso
+// aparece — é no SEGUNDO que ele não pode repetir.
+await page.getByText("Rascunho restaurado").waitFor({ timeout: 10000 });
+await page.reload({ waitUntil: "networkidle" });
+await frame.locator("#sheet").waitFor({ timeout: 15000 });
+await page.waitForTimeout(1500);
+const avisoNoReload = await page.getByText("Rascunho restaurado").count();
+console.log(`   aviso repetido no segundo reload (esperado false): ${avisoNoReload > 0}`);
+if (avisoNoReload > 0) console.log("   FALHA: o aviso não devia reaparecer na mesma aba");
+
+console.log("14.2) aba nova (mesmo navegador) volta a avisar");
+const abaNova = await context.newPage();
+await abaNova.goto("http://localhost:3000/", { waitUntil: "networkidle" });
+await abaNova.getByText("Rascunho restaurado").waitFor({ timeout: 10000 });
+console.log("   OK: quem fecha e abre de novo continua sendo avisado");
+await abaNova.close();
 await shot("14-apos-refresh");
 
 console.log("13.5) botão Compartilhar copia o link com o texto de divulgação");
