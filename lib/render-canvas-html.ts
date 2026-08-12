@@ -77,7 +77,7 @@ function renderEditableItem(
   return `<li class="li-edit${pendingClass}">
         <span class="item-text" contenteditable="true" data-role="item-text" data-placeholder="Adicionar item…" ${attrs}>${escapeHtml(item.text)}</span>
         <span class="item-controls">
-          <button type="button" data-action="toggle-pending" ${attrs} title="${item.pending ? "Em aberto — clique pra marcar como decidido" : "Marcar como em aberto (pendente de decisão)"}" aria-pressed="${item.pending ? "true" : "false"}"><span class="visually-hidden">Em aberto</span></button>
+          <button type="button" data-action="toggle-pending" ${attrs} aria-pressed="${item.pending ? "true" : "false"}" title="Marcar/desmarcar como pendente">●</button>
           <button type="button" data-action="remove-item" ${attrs} title="Remover item">✕</button>
         </span>
       </li>`;
@@ -647,55 +647,31 @@ const EDITABLE_CSS = `
   .block li.li-edit:not(.open)::before { top: 8px; }
   .block li.li-edit .item-text,
   .zoom-card li.li-edit .item-text { flex: 1; min-width: 0; }
-  .item-controls { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  /* Status "em aberto": um círculo vazado que enche quando marcado. Antes era
-     um caractere "●" que ficava sempre igual — não dava pra saber, olhando,
-     se o item estava marcado ou não. */
-  .item-controls button[data-action="toggle-pending"] {
-    width: 13px;
-    height: 13px;
-    padding: 0;
-    border: 1.5px solid var(--line);
-    border-radius: 50%;
-    background: none;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background 0.15s ease, border-color 0.15s ease;
-  }
-  .item-controls button[data-action="toggle-pending"]:hover {
-    border-color: var(--accent-dark);
-    background: var(--accent-bg);
-  }
-  li.li-edit.open .item-controls button[data-action="toggle-pending"] {
-    background: var(--accent-dark);
-    border-color: var(--accent-dark);
-  }
-  /* Discreto por opacidade, não por cor clara: em cima do chip do item
-     marcado, um "✕" na cor da linha some por completo. */
-  .item-controls button[data-action="remove-item"] {
+  .item-controls { display: flex; gap: 2px; flex-shrink: 0; }
+  .item-controls button {
     border: none;
     background: none;
     cursor: pointer;
+    font-size: 9px;
+    color: var(--line);
+    line-height: 1;
+    padding: 3px;
+  }
+  .item-controls button:hover { color: var(--accent-dark); }
+  li.li-edit.open .item-controls button[data-action="toggle-pending"] { color: var(--accent-dark); }
+  /* Discreto por opacidade, não por cor clara: em cima do chip do item
+     marcado, um "✕" na cor da linha some por completo. */
+  .item-controls button[data-action="remove-item"] {
     font-size: 10px;
     color: var(--muted);
     opacity: 0.45;
-    line-height: 1;
-    padding: 3px;
   }
   .item-controls button[data-action="remove-item"]:hover {
     color: var(--accent-dark);
     opacity: 1;
   }
-  .zoom-card .item-controls button[data-action="toggle-pending"] { width: 17px; height: 17px; }
-  .zoom-card .item-controls button[data-action="remove-item"] { font-size: 14px; padding: 5px; }
+  .zoom-card .item-controls button { font-size: 13px; padding: 5px; }
+  .zoom-card .item-controls button[data-action="remove-item"] { font-size: 14px; }
   .add-item-btn {
     margin-top: 6px;
     font-size: 10px;

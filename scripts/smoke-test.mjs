@@ -294,7 +294,7 @@ const mesmoRascunho = textoNoForm.includes("Processo de matricula ainda e feito 
 console.log(`   formulário abriu com o texto escrito no canvas: ${mesmoRascunho}`);
 if (!mesmoRascunho) console.log("   FALHA: as duas rotas deviam compartilhar o rascunho");
 const lattes = page.getByRole("link", { name: "Lattes" });
-const repo = page.getByRole("link", { name: "GitHub" });
+const repo = page.getByRole("link", { name: "GitHub", exact: true });
 console.log(`   links do sidebar (GitHub + Lattes): ${(await repo.count()) > 0 && (await lattes.count()) > 0}`);
 if ((await repo.count()) === 0 || (await lattes.count()) === 0) {
   console.log("   FALHA: faltam os links externos no sidebar");

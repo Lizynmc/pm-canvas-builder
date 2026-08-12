@@ -3,11 +3,7 @@ import { Poppins } from "next/font/google";
 import Link from "next/link";
 import { Link2 } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
-import {
-  AUTHOR_GITHUB_URL,
-  LICENSE_NAME,
-  LICENSE_URL,
-} from "@/lib/project-links";
+import { LICENSE_NAME, LICENSE_URL } from "@/lib/project-links";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -47,16 +43,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </Link>
           </span>
           <div className="flex items-center gap-4">
-            <Link
-              href={AUTHOR_GITHUB_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors"
-              aria-label="GitHub"
-            >
-              <Link2 className="size-4" />
-              GitHub
-            </Link>
             {LINKEDIN_URL ? (
               <Link
                 href={LINKEDIN_URL}

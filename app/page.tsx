@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Download, ExternalLink, RotateCcw } from "lucide-react";
 import { emptyCanvasModel } from "@/lib/canvas-schema";
-import { DEFAULT_PALETTE_ID } from "@/lib/palettes";
+import { DEFAULT_PALETTE_ID, getPalette } from "@/lib/palettes";
 import { renderCanvasHtml } from "@/lib/render-canvas-html";
 import { useDraft } from "@/lib/use-draft";
 import { useAdvancedMode } from "@/lib/use-advanced-mode";
@@ -72,7 +72,7 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="projectName">Nome do projeto</Label>
           <Input
@@ -111,25 +111,33 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={handleDownload}>
-          <Download className="size-4" /> Baixar HTML
-        </Button>
-        <Button variant="outline" onClick={handleOpenPreview}>
-          <ExternalLink className="size-4" /> Abrir preview em nova aba
-        </Button>
-        <Button variant="outline" onClick={handleClear}>
-          <RotateCcw className="size-4" /> Limpar rascunho
-        </Button>
-      </div>
+      {/* O canvas e os botões dividem o mesmo fundo: o iframe já pinta o
+          `pageBg` da paleta, então repetir a cor aqui faz a emenda sumir e os
+          botões parecerem parte da folha, embaixo dela. */}
+      <div
+        className="rounded-md border p-4 space-y-4"
+        style={{ background: getPalette(model.paletteId).pageBg }}
+      >
+        <EditableCanvas
+          model={model}
+          advanced={advanced}
+          onEdit={(message) =>
+            setModel((prev) => applyCanvasEdit(prev, message))
+          }
+        />
 
-      <EditableCanvas
-        model={model}
-        advanced={advanced}
-        onEdit={(message) =>
-          setModel((prev) => applyCanvasEdit(prev, message))
-        }
-      />
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handleDownload}>
+            <Download className="size-4" /> Baixar HTML
+          </Button>
+          <Button variant="outline" onClick={handleOpenPreview}>
+            <ExternalLink className="size-4" /> Abrir preview em nova aba
+          </Button>
+          <Button variant="outline" onClick={handleClear}>
+            <RotateCcw className="size-4" /> Limpar rascunho
+          </Button>
+        </div>
+      </div>
     </main>
   );
 }

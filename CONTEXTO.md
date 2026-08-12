@@ -76,17 +76,17 @@ a UI do formulário, não afeta o canvas exportado.
 
 | Branch | Conteúdo | Situação |
 |---|---|---|
-| `main` | Scaffold inicial + preview em nova aba + formulário reorganizado (divulgação progressiva, agrupado por coluna do canvas) | Publicada no GitHub |
-| `test-ui` | Preview em nova aba + reorganização do formulário — **já mesclada em `main`** | Publicada, preservada por histórico |
-| `test-simple-form` | Switch global "Modo simples" (uma textarea por bloco, parágrafo separado por linha em branco vira item) vs "Modo avançado" (formulário completo por item/subgrupo/detalhamento). Botão de ocultar/mostrar o preview. | Publicada no GitHub, **não mesclada em `main`** |
-| `test-ui-in-canvas` | **Sem formulário separado — o canvas em si é o editor.** Baseada em `test-simple-form`. Ver seção própria abaixo. | Local, ainda não publicada |
-| `test-canvas-completo` | `test-ui-in-canvas` + toggle **"Modo completo"** (sublistas e detalhamento editáveis no canvas), aba "Requisitos completos", rota `/canvas-form` com o formulário de volta e um sidebar pra alternar. Também troca paleta padrão, cores e favicon. Ver seção própria abaixo. | Local, ainda não publicada |
+| `main` | **Tudo abaixo, mesclado.** Edição direta no canvas (`/`) + formulário (`/canvas-form`), modo completo, aba de texto corrido em Requisitos, paletas e crédito/licença. | Local à frente do GitHub — o merge ainda não foi enviado |
+| `test-ui` | Preview em nova aba + reorganização do formulário | Publicada, mesclada, preservada por histórico |
+| `test-simple-form` | Switch "Modo simples" (uma textarea por bloco) vs "Modo avançado" (formulário completo). Botão de ocultar/mostrar o preview. | Publicada, entrou em `main` pela linha abaixo |
+| `test-ui-in-canvas` | **Sem formulário separado — o canvas em si é o editor.** Baseada em `test-simple-form`. Ver seção própria abaixo. | Local, mesclada |
+| `test-canvas-completo` | `test-ui-in-canvas` + toggle **"Modo completo"**, aba "Requisitos completos", rota `/canvas-form` e sidebar. Ver seção própria abaixo. | Local, **mesclada em `main`** (fast-forward) |
 
-Todo o trabalho de formulário (`test-simple-form`) e o de edição direta no
-canvas (`test-ui-in-canvas`) são **abordagens alternativas pro mesmo
-problema**, exploradas em paralelo a pedido do usuário — não foram desenhadas
-pra conviver. Antes de mesclar qualquer uma em `main`, vale decidir qual
-direção vingou (ver "Estado em aberto" no fim deste documento).
+As duas abordagens — formulário e edição direta no canvas — nasceram como
+alternativas exploradas em paralelo, cada uma numa branch. **Elas não competem
+mais:** `test-canvas-completo` colocou as duas em rotas diferentes, dividindo
+o mesmo rascunho, e foi isso que entrou em `main`. As branches antigas ficam
+como histórico; não há mais nada pendente de decisão entre elas.
 
 ### `test-ui-in-canvas` — edição direta no canvas
 
@@ -281,12 +281,8 @@ tracinho pontilhado clicável antes do texto — não volte a escrever nada ali.
 
 ## Estado em aberto
 
-- **Qual branch vira a direção definitiva?** `test-simple-form` (formulário
-  com modo simples/avançado) e a linha `test-ui-in-canvas` →
-  `test-canvas-completo` (edição direta no canvas, a favorita do usuário)
-  resolvem o mesmo problema de formas incompatíveis. `test-canvas-completo`
-  já cobre tudo que o formulário cobria, então é a candidata natural — falta
-  o usuário decidir. Decidir antes de mesclar qualquer uma em `main`.
+- **O merge em `main` ainda não foi enviado ao GitHub.** Foi feito local, a
+  pedido do usuário, e é fast-forward — `git push` resolve quando ele quiser.
 - **As duas abordagens agora convivem em rotas diferentes.** `/` é a edição
   direta no canvas; `/canvas-form` é o formulário de `test-simple-form`
   (acordeão por coluna do canvas, modo simples/completo, preview ao lado),
@@ -309,11 +305,16 @@ tracinho pontilhado clicável antes do texto — não volte a escrever nada ali.
   propósito** enquanto não houver deploy: preenchendo aquela constante, a
   frase passa sozinha a incluir "Acesse o gerador em …". Não aponte esse link
   pro repositório.
-- **O botão de status do item é um círculo que enche quando marcado.** Era um
-  caractere "●" que ficava idêntico nos dois estados — não dava pra saber,
-  olhando, se o item estava em aberto. O "✕" ao lado fica discreto por
-  `opacity`, não por cor clara: em cima do chip do item marcado, um "✕" na cor
-  da linha sumia por completo.
+- **O marcador de status do item é o "●" discreto, e fica assim.** Foi trocado
+  uma vez por um círculo vazado que enchia quando marcado; o usuário odiou e
+  mandou voltar. Dois ajustes da mesma leva **ficaram**: o "✕" ao lado é
+  discreto por `opacity`, não por cor clara (em cima do chip do item marcado,
+  um "✕" na cor da linha sumia por completo), e o item editável tem
+  `padding-left` maior, porque a bolinha do marcador encostava no texto.
+- **Na rota do canvas, os botões de ação ficam embaixo da folha, dentro do
+  fundo da paleta.** O iframe não tem fundo nem borda próprios: quem o envolve
+  pinta o mesmo `pageBg`, e a emenda entre os dois some. Se mexer no iframe,
+  não devolva `bg-white`/`border` pra ele.
 - **Menos texto de apoio na tela, a pedido do usuário.** Saíram os títulos das
   colunas conceituais no formulário ("Passado → Futuro", "O quê"…) e o exemplo
   comprido do placeholder do modo simples. No lugar da separação por coluna,
@@ -327,9 +328,9 @@ tracinho pontilhado clicável antes do texto — não volte a escrever nada ali.
 - **`test-ui-in-canvas` e `test-canvas-completo` só existem localmente** — as
   outras três branches (`main`, `test-ui`, `test-simple-form`) já foram
   enviadas ao GitHub.
-- **`pnpm-workspace.yaml` e `pnpm-lock.yaml` entraram sem commit ainda.** O
-  pnpm 11 trata script de build ignorado como erro fatal, então `pnpm install`
-  (e por tabela `next dev`, que roda o install antes) falhava até `esbuild` e
-  `unrs-resolver` serem liberados em `allowBuilds`. O repo ainda tem um
-  `package-lock.json` do scaffold npm — conviver com os dois lockfiles convida
-  divergência; escolher um.
+- **Dois lockfiles no repo.** `pnpm-workspace.yaml` e `pnpm-lock.yaml` foram
+  commitados porque o pnpm 11 trata script de build ignorado como erro fatal:
+  `pnpm install` (e por tabela `next dev`, que roda o install antes) falhava
+  até `esbuild` e `unrs-resolver` serem liberados em `allowBuilds`. Mas o
+  `package-lock.json` do scaffold npm continua lá — conviver com os dois
+  convida divergência; escolher um.

@@ -111,12 +111,14 @@ export function EditableCanvas({
     });
   }, [model, advanced]);
 
+  // Sem fundo nem borda próprios: o iframe já pinta o `pageBg` da paleta, e
+  // quem o envolve repete a mesma cor — a emenda tem que ser invisível.
   return (
     <iframe
       ref={iframeRef}
       title="Canvas editável"
       allow="fullscreen"
-      className="w-full rounded-md border bg-white"
+      className="w-full rounded-md"
       style={{ minHeight: 900 }}
     />
   );
