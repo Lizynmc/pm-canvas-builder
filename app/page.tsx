@@ -12,7 +12,11 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Download, ExternalLink, RotateCcw } from "lucide-react";
-import { BLOCK_DEFINITIONS, emptyCanvasModel } from "@/lib/canvas-schema";
+import {
+  BLOCK_DEFINITION_MAP,
+  CANVAS_SECTIONS,
+  emptyCanvasModel,
+} from "@/lib/canvas-schema";
 import { DEFAULT_PALETTE_ID } from "@/lib/palettes";
 import { renderCanvasHtml } from "@/lib/render-canvas-html";
 import { useDraft } from "@/lib/use-draft";
@@ -113,25 +117,37 @@ export default function Home() {
           />
         </div>
 
-        <Accordion multiple className="w-full">
-          {BLOCK_DEFINITIONS.map((def) => (
-            <AccordionItem key={def.id} value={def.id}>
-              <AccordionTrigger>{def.title}</AccordionTrigger>
-              <AccordionContent>
-                <BlockEditor
-                  def={def}
-                  block={model.blocks[def.id]}
-                  onChange={(block) =>
-                    setModel({
-                      ...model,
-                      blocks: { ...model.blocks, [def.id]: block },
-                    })
-                  }
-                />
-              </AccordionContent>
-            </AccordionItem>
+        <div className="space-y-5">
+          {CANVAS_SECTIONS.map((section) => (
+            <div key={section.label} className="space-y-1.5">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {section.label}
+              </h2>
+              <Accordion multiple className="w-full">
+                {section.blockIds.map((id) => {
+                  const def = BLOCK_DEFINITION_MAP[id];
+                  return (
+                    <AccordionItem key={id} value={id}>
+                      <AccordionTrigger>{def.title}</AccordionTrigger>
+                      <AccordionContent>
+                        <BlockEditor
+                          def={def}
+                          block={model.blocks[id]}
+                          onChange={(block) =>
+                            setModel({
+                              ...model,
+                              blocks: { ...model.blocks, [id]: block },
+                            })
+                          }
+                        />
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            </div>
           ))}
-        </Accordion>
+        </div>
 
         <div className="flex gap-2">
           <Button onClick={handleDownload}>
